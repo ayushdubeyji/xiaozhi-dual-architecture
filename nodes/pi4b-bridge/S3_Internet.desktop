@@ -1,0 +1,11 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=S3 Internet
+Comment=Emergency ESP32-S3 RNDIS Ethernet Toggle
+Exec=/bin/bash /home/ayush/xiaozhi_dual_architecture/nodes/pi4b-bridge/s3_internet_toggle.sh
+Icon=network-wired
+Terminal=false
+Categories=Network;Utility;
+StartupNotify=false
+X-KeepTerminal=false

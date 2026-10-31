@@ -1,0 +1,44 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Environments
+.env
+.env.local
+.env.*.local
+venv/
+env/
+ENV/
+.venv/
+
+# Build artifacts & ESP-IDF
+build/
+sdkconfig
+sdkconfig.old
+dependencies.lock
+managed_components/
+*.bin
+*.elf
+*.map
+
+# Editor / OS files
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Database & SQLite WAL
+*.db
+*.sqlite
+*.sqlite3
+*-wal
+*-shm
+
+# Test / Coverage artifacts
+.pytest_cache/
+.coverage
+htmlcov/

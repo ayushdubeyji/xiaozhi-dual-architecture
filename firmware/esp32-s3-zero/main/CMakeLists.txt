@@ -1,0 +1,24 @@
+idf_component_register(
+    SRCS
+        "../src/main.c"
+        "../src/audio_capture.c"
+        "../src/wake_engine.c"
+        "../src/usb_hid_trigger.c"
+    INCLUDE_DIRS
+        "../include"
+        "../src"
+    REQUIRES
+        driver
+        esp_driver_i2s
+        esp_driver_gpio
+        esp_driver_rmt
+        esp_timer
+        esp_wifi
+        esp_netif
+        nvs_flash
+        lwip
+        esp_event
+        esp_tinyusb
+        led_strip
+        esp-sr
+)

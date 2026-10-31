@@ -1,0 +1,28 @@
+[Unit]
+Description=Waveshare ESP32-S3 USB HID Grabber & Rover Bridge Daemon
+After=network.target udev.service xiaozhi-pi.service
+Wants=xiaozhi-pi.service
+
+[Service]
+Type=simple
+User=ayush
+Group=ayush
+SupplementaryGroups=input dialout audio
+WorkingDirectory=/home/ayush/xiaozhi_dual_architecture/nodes/pi4b-bridge
+Environment="PYTHONUNBUFFERED=1"
+Environment="PATH=/home/ayush/xiaozhi_dual_architecture/nodes/pi4b-bridge/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin"
+ExecStart=/home/ayush/xiaozhi_dual_architecture/nodes/pi4b-bridge/venv/bin/python hid_wake_daemon.py
+Restart=always
+RestartSec=3
+
+# Low-Memory CGroup Resource Constraints
+MemoryHigh=380M
+MemoryMax=450M
+CPUQuota=80%
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=s3-hid-wake
+
+[Install]
+WantedBy=multi-user.target

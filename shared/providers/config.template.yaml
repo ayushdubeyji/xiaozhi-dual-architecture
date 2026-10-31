@@ -1,0 +1,83 @@
+# Xiaozhi Unified Provider Configuration Template
+# Supports hot-swappable environment variables in ${VAR_NAME} or ${VAR_NAME:-default} syntax
+
+app:
+  name: "xiaozhi-unified-router"
+  environment: "production"
+
+asr:
+  primary_provider: "groq"
+  fallback_provider: "openai"
+  timeout_seconds: 15.0
+  audio_spec:
+    sample_rate: 16000
+    channels: 1
+    sample_width: 2
+    format: "pcm_s16le"
+  providers:
+    groq:
+      api_key: "${WHISPER_API_KEY}"
+      base_url: "${WHISPER_BASE_URL:-https://api.groq.com/openai/v1}"
+      model: "${WHISPER_MODEL:-whisper-large-v3-turbo}"
+      language: "en"
+      temperature: 0.0
+    openai:
+      api_key: "${OPENAI_API_KEY}"
+      base_url: "${OPENAI_BASE_URL:-https://api.openai.com/v1}"
+      model: "whisper-1"
+      language: "en"
+      temperature: 0.0
+
+llm:
+  default_brain: "gemini"
+  fallback_brain: "groq"
+  temperature: 0.7
+  max_tokens: 1024
+  timeout_seconds: 25.0
+  providers:
+    gemini:
+      api_key: "${GEMINI_API_KEY}"
+      backup_api_key: "${GEMINI_BACKUP_API_KEY}"
+      model: "gemini-2.5-flash"
+      fallback_model: "gemini-3.5-flash-lite"
+      base_url: "https://generativelanguage.googleapis.com/v1beta"
+    groq:
+      api_key: "${GROQ_API_KEY}"
+      model: "llama-3.3-70b-versatile"
+      fallback_model: "openai/gpt-oss-120b"
+      base_url: "https://api.groq.com/openai/v1"
+    grok:
+      api_key: "${XAI_GROK_API_KEY}"
+      model: "grok-2-latest"
+      base_url: "https://api.x.ai/v1"
+
+brain_switcher:
+  patterns:
+    gemini:
+      - "switch to gemini"
+      - "use gemini"
+      - "activate gemini"
+      - "switch brain to gemini"
+    groq:
+      - "switch to groq"
+      - "use groq"
+      - "activate groq"
+      - "switch to llama"
+      - "switch brain to groq"
+    grok:
+      - "switch to grok"
+      - "use grok"
+      - "activate grok"
+      - "switch brain to grok"
+
+wifi:
+  ssid: "${S3_WIFI_SSID}"
+  password: "${S3_WIFI_PASS}"
+
+nodes:
+  workbench:
+    host: "${WORKBENCH_HOST:-192.168.0.111}"
+    port: 8000
+  pi:
+    host: "${PI_HOST:-192.168.0.112}"
+    port: 8000

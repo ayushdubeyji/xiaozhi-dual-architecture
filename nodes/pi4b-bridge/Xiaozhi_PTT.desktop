@@ -1,0 +1,11 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Xiaozhi PTT
+Comment=Touch Push-to-Talk Overlay for Xiaozhi Agent
+Exec=/home/ayush/xiaozhi_dual_architecture/nodes/pi4b-bridge/venv/bin/python /home/ayush/xiaozhi_dual_architecture/nodes/pi4b-bridge/ptt_overlay_widget.py
+Icon=audio-input-microphone
+Terminal=false
+Categories=Audio;Utility;
+StartupNotify=false
+X-KeepTerminal=false

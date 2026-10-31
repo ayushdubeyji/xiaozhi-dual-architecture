@@ -1,0 +1,11 @@
+## IDF Component Manager Manifest
+## Waveshare ESP32-S3-Zero Distributed Xiaozhi Node
+dependencies:
+  idf:
+    version: ">=5.0.0"
+  espressif/esp-sr:
+    version: "^2.0.0"
+  espressif/esp_tinyusb:
+    version: "^1.4.0"
+  espressif/led_strip:
+    version: "^2.5.0"

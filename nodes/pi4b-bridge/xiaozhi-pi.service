@@ -1,0 +1,27 @@
+[Unit]
+Description=Xiaozhi Pi Low-Memory Voice Agent (Node A)
+After=network.target sound.target
+Wants=network.target
+
+[Service]
+Type=simple
+User=ayush
+Group=ayush
+WorkingDirectory=/home/ayush/xiaozhi_dual_architecture/nodes/pi4b-bridge
+Environment="PYTHONUNBUFFERED=1"
+Environment="PATH=/home/ayush/xiaozhi_dual_architecture/nodes/pi4b-bridge/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin"
+ExecStart=/home/ayush/xiaozhi_dual_architecture/nodes/pi4b-bridge/venv/bin/python xiaozhi_pi_agent.py
+Restart=always
+RestartSec=3
+
+# Low-Memory CGroup Resource Constraints
+MemoryHigh=380M
+MemoryMax=450M
+CPUQuota=150%
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=xiaozhi-pi
+
+[Install]
+WantedBy=multi-user.target
