@@ -162,9 +162,10 @@ master_html = f"""<!DOCTYPE html>
       --font-mono: 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
       
       --header-height: 64px;
-      --sidebar-width: 320px;
+      --sidebar-width: 280px;
       --ease-hud: cubic-bezier(0.16, 1, 0.3, 1);
     }}
+
 
     *, *::before, *::after {{
       box-sizing: border-box;

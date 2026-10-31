@@ -83,8 +83,34 @@ key_symbols = [
 ]
 for sym in key_symbols:
     assert sym in html, f"Missing expected key technical/philosophical symbol: '{sym}'"
-print(f"✓ All {len(key_symbols)} key hardware, algorithms, and cosmic symbols verified.")
+# 10. Zero Non-Printable Control Characters
+bad_chars = [f"0x{ord(c):02x} at idx {i}" for i, c in enumerate(html) if ord(c) < 32 and c not in '\r\n']
+assert len(bad_chars) == 0, f"Found {len(bad_chars)} illegal control characters in HTML! {bad_chars[:5]}"
+print("✓ Document 100% clean of illegal control characters (0 null, bell, backspace, or form feed chars).")
 
-print("\n========================================================")
-print(">>> ALL 9 MEGASERIES INTEGRITY CHECKS PASSED (100%) <<<")
-print("========================================================\n")
+# 11. Mathematical LaTeX Integrity Checks
+latex_checks = [
+    (r'\begin{bmatrix}', "Matrix notation"),
+    (r'\begin{cases}', "Piecewise cases"),
+    (r'\frac{1}{2}', "Fraction formatting"),
+    (r'\approx', "Approximation symbol"),
+    (r'\times', "Multiplication symbol"),
+    (r'\theta', "Theta angle"),
+    (r'\tau_{\text{timeout}}', "Tau timeout"),
+    (r'\neg \text{Stationary}', "Logical negation"),
+    (r'\text{EVIOCGRAB}', "EVIOCGRAB in text mode"),
+    (r'\text{MemoryMax}', "MemoryMax in text mode"),
+    (r'\text{dynJerk}', "dynJerk in text mode")
+]
+for formula_snippet, label in latex_checks:
+    assert formula_snippet in html, f"Corrupted or missing LaTeX formula: {label} ({formula_snippet})"
+print(f"✓ All {len(latex_checks)} critical LaTeX formulas verified free of escape-sequence corruption.")
+
+# 12. Exact Sidebar Width Specification
+assert '--sidebar-width: 280px;' in html, "Sidebar width must be exact 280px per specification!"
+print("✓ Exact 280px sidebar width specification verified.")
+
+print("\n=========================================================")
+print(">>> ALL 12 MEGASERIES INTEGRITY CHECKS PASSED (100%) <<<")
+print("=========================================================\n")
+
