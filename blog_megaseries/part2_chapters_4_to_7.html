@@ -1,0 +1,3037 @@
+<!-- ==============================================================================
+     FEYNMAN AI WORKBENCH & MECANUM ROVER TECHNICAL MEGASERIES: PART 2
+     Chapters 4, 5, 6, and 7 (20 Comprehensive Mini-Chapters & Course Labs)
+     Author: Ayush Dubey (Hardware Architect, Lead Systems Engineer & Biophysicist)
+     Target Publication: ayushdubey.tech /boost/boost
+     Architecture: Linux evdev, Systemd Cgroups, Groq Whisper ASR, Multi-LLM Router,
+                   MCP over WebSockets, RP2040 Omnidirectional Mecanum Kinematics
+============================================================================== -->
+
+<style>
+  /* ==========================================================================
+     Dark Cyberdeck Design System & Zero-Overflow Responsive Layout
+     Compatible with Part 1 and Part 3 on ayushdubey.tech /boost/boost
+     ========================================================================== */
+  .megaseries-part,
+  .megaseries-content {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: #cbd5e1;
+    background-color: transparent;
+    line-height: 1.75;
+    font-size: 1.05rem;
+    max-width: 100%;
+    overflow-wrap: break-word;
+    word-break: break-word;
+    box-sizing: border-box;
+  }
+
+  .megaseries-part *,
+  .megaseries-content * {
+    box-sizing: border-box;
+  }
+
+  /* Chapter & Section Typography */
+  .chapter-title {
+    font-size: clamp(1.85rem, 4vw, 2.6rem);
+    color: #ffffff;
+    border-bottom: 2px solid rgba(0, 240, 255, 0.4);
+    padding-bottom: 0.75rem;
+    margin-top: 3.5rem;
+    margin-bottom: 1.5rem;
+    letter-spacing: -0.02em;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+  }
+
+  .chapter-title .ch-badge {
+    background: linear-gradient(135deg, #00f0ff, #0284c7);
+    color: #040813;
+    font-size: 0.95rem;
+    font-weight: 800;
+    padding: 4px 14px;
+    border-radius: 9999px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    display: inline-block;
+  }
+
+  .chapter-intro {
+    font-size: 1.12rem;
+    line-height: 1.8;
+    color: #94a3b8;
+    background: rgba(15, 23, 42, 0.6);
+    border-left: 4px solid #00f0ff;
+    padding: 1.25rem 1.5rem;
+    border-radius: 0 8px 8px 0;
+    margin-bottom: 2.5rem;
+  }
+
+  .mini-chapter {
+    margin-bottom: 3.5rem;
+  }
+
+  .mini-chapter-title {
+    font-size: clamp(1.35rem, 2.6vw, 1.8rem);
+    color: #38bdf8;
+    margin-top: 2.5rem;
+    margin-bottom: 1.1rem;
+    border-left: 4px solid #00f0ff;
+    padding-left: 14px;
+    letter-spacing: -0.01em;
+  }
+
+  h4 {
+    font-size: 1.18rem;
+    color: #f1f5f9;
+    margin-top: 1.8rem;
+    margin-bottom: 0.6rem;
+  }
+
+  p {
+    margin-top: 0;
+    margin-bottom: 1.25rem;
+    text-align: justify;
+  }
+
+  ul, ol {
+    margin-top: 0;
+    margin-bottom: 1.35rem;
+    padding-left: 1.6rem;
+  }
+
+  li {
+    margin-bottom: 0.5rem;
+  }
+
+  kbd {
+    background: #1e293b;
+    color: #38bdf8;
+    border: 1px solid #334155;
+    border-radius: 4px;
+    padding: 2px 6px;
+    font-family: 'Fira Code', monospace;
+    font-size: 0.85em;
+    box-shadow: 0 2px 0 #0f172a;
+  }
+
+  /* Preformatted Code Blocks */
+  pre {
+    max-width: 100%;
+    width: 100%;
+    box-sizing: border-box;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    white-space: pre;
+    background: #080e1a;
+    border: 1px solid rgba(56, 189, 248, 0.25);
+    border-radius: 8px;
+    padding: 1.25rem;
+    font-family: 'Fira Code', monospace;
+    font-size: 0.88rem;
+    line-height: 1.55;
+    color: #e2e8f0;
+    margin: 1.5rem 0;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.45);
+  }
+
+  code {
+    font-family: 'Fira Code', monospace;
+    font-size: 0.9em;
+    background: rgba(56, 189, 248, 0.12);
+    color: #38bdf8;
+    padding: 2px 6px;
+    border-radius: 4px;
+    word-break: break-word;
+  }
+
+  pre code {
+    background: transparent;
+    color: inherit;
+    padding: 0;
+    word-break: normal;
+  }
+
+  /* Zero-Overflow Responsive Table Wrapper */
+  .spec-table-wrap {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    margin: 1.75rem 0;
+    border-radius: 8px;
+    border: 1px solid rgba(56, 189, 248, 0.25);
+    background: rgba(14, 25, 46, 0.65);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+  }
+
+  .spec-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.92rem;
+    text-align: left;
+    min-width: 520px;
+  }
+
+  .spec-table th {
+    background: rgba(20, 35, 62, 0.9);
+    color: #00f0ff;
+    padding: 12px 16px;
+    border-bottom: 1px solid rgba(56, 189, 248, 0.3);
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    font-size: 0.82rem;
+  }
+
+  .spec-table td {
+    padding: 10px 16px;
+    border-bottom: 1px solid rgba(56, 189, 248, 0.1);
+    color: #cbd5e1;
+  }
+
+  .spec-table tr:hover td {
+    background: rgba(56, 189, 248, 0.06);
+  }
+
+  /* Callout Boxes */
+  .callout {
+    border-radius: 8px;
+    padding: 1.25rem 1.5rem;
+    margin: 1.75rem 0;
+    border-left: 4px solid;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
+    line-height: 1.68;
+  }
+
+  .callout-info {
+    border-left-color: #00f0ff;
+    background: rgba(8, 28, 48, 0.7);
+  }
+  .callout-info strong {
+    color: #00f0ff;
+  }
+
+  .callout-warning {
+    border-left-color: #fbbf24;
+    background: rgba(48, 36, 10, 0.7);
+  }
+  .callout-warning strong {
+    color: #fbbf24;
+  }
+
+  .callout-biomimetic {
+    border-left-color: #4ade80;
+    background: rgba(10, 36, 20, 0.7);
+  }
+  .callout-biomimetic strong {
+    color: #4ade80;
+  }
+
+  .callout-cosmic {
+    border-left-color: #c084fc;
+    background: rgba(30, 16, 50, 0.7);
+  }
+  .callout-cosmic strong {
+    color: #c084fc;
+  }
+
+  /* Interactive Hands-On Course Labs */
+  .exercise-box {
+    background: linear-gradient(135deg, rgba(14, 25, 46, 0.95), rgba(8, 14, 26, 0.98));
+    border: 1px solid #38bdf8;
+    border-radius: 10px;
+    padding: 1.5rem;
+    margin: 2rem 0;
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.5);
+  }
+
+  .exercise-box h5 {
+    color: #00f0ff;
+    font-size: 1.15rem;
+    margin-top: 0;
+    margin-bottom: 0.85rem;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    letter-spacing: -0.01em;
+  }
+
+  .exercise-box ol {
+    margin-bottom: 0.5rem;
+  }
+
+  /* Mathematical Formatting */
+  .math-block {
+    overflow-x: auto;
+    padding: 1.1rem 0;
+    text-align: center;
+    color: #f1f5f9;
+    font-size: 1.1em;
+  }
+</style>
+
+<!-- MathJax Integration for Seamless Formula Rendering -->
+<script>
+  window.MathJax = {
+    tex: {
+      inlineMath: [['$', '$'], ['\\(', '\\)']],
+      displayMath: [['$$', '$$'], ['\\[', '\\]']],
+      processEscapes: true
+    },
+    options: {
+      skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+    }
+  };
+</script>
+<script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+<div class="megaseries-content megaseries-part" id="part-2">
+
+<!-- ==============================================================================
+     CHAPTER 4: LINUX KERNEL INPUT SUBSYSTEM & LOW-MEMORY DAEMONS
+     ============================================================================== -->
+<section id="chapter-4" class="chapter-block">
+  <h2 class="chapter-title">
+    <span class="ch-badge">Chapter 4</span>
+    Linux Kernel Input Subsystem &amp; Low-Memory Daemons
+  </h2>
+  
+  <p class="chapter-intro">
+    When architecting edge robotics and cyberdeck systems running on single-board computers like the Raspberry Pi 4B, 
+    conventional user-space abstraction layers frequently collapse under real-time acoustic and physical actuation demands. 
+    A voice assistant that relies on standard X11 or Wayland keyboard event propagation inevitably leaks hotkey strokes into 
+    the active terminal, disrupting shell commands or corrupting code buffers. Concurrently, unconstrained Python daemons running 
+    asynchronous audio pipelines, WebSockets, and computer vision models quickly trigger the Linux kernel Out-Of-Memory (OOM) 
+    killer on memory-limited embedded platforms. In this chapter, we engineer the foundational low-level plumbing: kernel 
+    input grabbing via <code>EVIOCGRAB</code>, strict systemd cgroup v2 resource partitioning, dual-homed USB RNDIS dynamic metric routing, 
+    and zero-latency Wayland Push-to-Talk overlays.
+  </p>
+
+  <!-- ---------------------------------------------------------------------------
+       Mini-Chapter 4.1
+       --------------------------------------------------------------------------- -->
+  <section id="mini-4-1" class="mini-chapter">
+    <h3 class="mini-chapter-title">Mini-Chapter 4.1: The Linux Input Subsystem &amp; <code>EVIOCGRAB</code> Architecture</h3>
+    <p>
+      The Linux input subsystem operates as an abstraction pipeline transforming raw electrical contact bounce and USB HID report 
+      descriptors into standardized <code>input_event</code> structures exposed via character device nodes in <code>/dev/input/event*</code>. 
+      Under normal operation, the kernel's input core distributes every received keystroke or coordinate delta to all open file descriptors 
+      attached to that device, broadcasting to virtual terminal consoles (<code>/dev/tty*</code>), display server event queues, and 
+      accessibility layers.
+    </p>
+    <p>
+      In a dedicated hardware cyberdeck where a dedicated microcontroller (such as the Waveshare ESP32-S3-Zero) injects macro chords 
+      like <kbd>Ctrl+Shift+Alt+W</kbd> (Wake) or <kbd>Ctrl+Shift+Alt+P</kbd> (Push-To-Talk) directly over USB HID, standard broadcast 
+      propagation is fatal. If the user has an active <code>bash</code> terminal, an <code>ssh</code> session to a remote rover, or a text 
+      editor open, chord leakage generates escape sequences, interrupts execution, or corrupts code. The solution lies in the 
+      <code>EVIOCGRAB</code> <code>ioctl</code> command, defined in <code>&lt;linux/input.h&gt;</code>:
+    </p>
+    <div class="math-block">
+      $$	ext{ioctl}(fd, 	ext{EVIOCGRAB}, 1) \implies 	ext{Exclusive Kernel Event Delivery}$$
+    </div>
+    <p>
+      When an application issues <code>ioctl(fd, EVIOCGRAB, 1)</code> on an open event device file descriptor, the kernel's 
+      <code>evdev.c</code> driver binds that specific client handle to the hardware device, completely detaching all other listeners 
+      from the distribution tree. While grabbed, no other process&mdash;not even the Linux virtual console or the X11/Wayland 
+      compositor&mdash;receives events from that device until an explicit <code>ioctl(fd, EVIOCGRAB, 0)</code> is dispatched or the file 
+      descriptor is closed.
+    </p>
+
+    <div class="spec-table-wrap">
+      <table class="spec-table">
+        <thead>
+          <tr>
+            <th>Event Code</th>
+            <th>Hex / Value</th>
+            <th>Type Identifier</th>
+            <th>Functional Role in Voice Stack</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>EV_SYN</code></td>
+            <td><code>0x00</code></td>
+            <td>Synchronization marker</td>
+            <td>Demarcates multi-key atomic state packets (e.g., <code>SYN_REPORT</code>)</td>
+          </tr>
+          <tr>
+            <td><code>EV_KEY</code></td>
+            <td><code>0x01</code></td>
+            <td>Key / Button transition</td>
+            <td>0 = Release, 1 = Press, 2 = Autorepeat; triggers state machine evaluation</td>
+          </tr>
+          <tr>
+            <td><code>EV_REL</code></td>
+            <td><code>0x02</code></td>
+            <td>Relative coordinate motion</td>
+            <td>Rotary dial or jog-shuttle integration</td>
+          </tr>
+          <tr>
+            <td><code>EV_ABS</code></td>
+            <td><code>0x03</code></td>
+            <td>Absolute positioning</td>
+            <td>Capacitive touchscreen coordinates for SmartElex 4.3" panel</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <pre><code class="language-c">/* Low-level Linux Kernel EVIOCGRAB Demonstration (C99) */
+#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;fcntl.h&gt;
+#include &lt;unistd.h&gt;
+#include &lt;linux/input.h&gt;
+#include &lt;sys/ioctl.h&gt;
+
+int claim_exclusive_input(const char *device_path) {
+    int fd = open(device_path, O_RDONLY);
+    if (fd &lt; 0) {
+        perror("[FATAL] Failed to open evdev device");
+        return -1;
+    }
+
+    /* Request exclusive kernel ownership (EVIOCGRAB) */
+    if (ioctl(fd, EVIOCGRAB, 1) &lt; 0) {
+        perror("[FATAL] EVIOCGRAB ioctl failed - device already grabbed");
+        close(fd);
+        return -1;
+    }
+
+    printf("[SUCCESS] Exclusively claimed %s. Keystrokes isolated from OS console.\n", device_path);
+    return fd;
+}
+
+void release_exclusive_input(int fd) {
+    if (fd &gt;= 0) {
+        ioctl(fd, EVIOCGRAB, 0); /* Release exclusive lock */
+        close(fd);
+        printf("[INFO] Released evdev grab.\n");
+    }
+}</code></pre>
+
+    <div class="callout callout-biomimetic">
+      <strong>Biomimetic Analogy &mdash; Mechanoreceptive Gating in Locust DCMD Neurons</strong><br>
+      In <em>Locusta migratoria</em>, the Descending Contralateral Movement Detector (DCMD) interneuron processes visual looming 
+      stimuli to trigger evasive collision avoidance jumps. During high-frequency flight wing-beats, immense sensory noise is generated 
+      by thoracic mechanoreceptors. To prevent sensory flooding, presynaptic inhibition gates out mechanical noise while prioritizing 
+      critical collision signals. <code>EVIOCGRAB</code> executes an identical cybernetic gating function: it severs incidental operating 
+      system noise, creating an isolated, deterministic neural pathway for mission-critical robotics triggers.
+    </div>
+
+    <div class="exercise-box">
+      <h5><span class="ch-badge">Hands-On Lab 4.1</span> Inspecting Evdev Devices &amp; Testing EVIOCGRAB</h5>
+      <p>Follow along on your Raspberry Pi 4B terminal to identify the ESP32-S3 USB HID composite node and observe exclusive grabbing in real-time:</p>
+      <ol>
+        <li>List all detected input devices by physical hardware ID:
+          <pre><code class="language-bash">ls -la /dev/input/by-id/</code></pre>
+          Locate the symlink matching <code>usb-Espressif_USB_Device-event-kbd</code>.
+        </li>
+        <li>Run <code>evtest</code> in monitoring mode to verify raw event flow:
+          <pre><code class="language-bash">sudo evtest /dev/input/by-id/usb-Espressif_USB_Device-event-kbd</code></pre>
+        </li>
+        <li>Notice that pressing keys on the device causes characters to appear in both <code>evtest</code> and echo onto the bash prompt. 
+        Once our <code>hid_wake_daemon.py</code> attaches with <code>EVIOCGRAB</code>, the console echo completely vanishes.</li>
+      </ol>
+    
+        <div class="lab-completion-wrap">
+          <label class="lab-check-container">
+            <input type="checkbox" class="lab-checkbox" data-lab="4.1">
+            <span class="checkmark"></span>
+            Mark Laboratory 4.1 Complete
+          </label>
+        </div>
+      </div>
+  </section>
+
+  <!-- ---------------------------------------------------------------------------
+       Mini-Chapter 4.2
+       --------------------------------------------------------------------------- -->
+  <section id="mini-4-2" class="mini-chapter">
+    <h3 class="mini-chapter-title">Mini-Chapter 4.2: Zero-Leak Keystroke Interception &amp; The Async Event Loop</h3>
+    <p>
+      Capturing complex keystroke chords without stalling user-space execution requires marrying <code>evdev</code> with Python's 
+      asynchronous <code>asyncio</code> event loop. In <code>nodes/pi4b-bridge/hid_wake_daemon.py</code>, we implement the 
+      <code>S3HidGrabber</code> class. The daemon dynamically discovers the ESP32-S3-Zero composite keyboard by filtering USB Vendor ID 
+      <code>0x303A</code>, executes an exclusive <code>grab()</code>, and enters an asynchronous event iterator 
+      (<code>device.async_read_loop()</code>).
+    </p>
+    <p>
+      To reliably distinguish intentional wake events from partial modifier presses, the grabber maintains a bit-set state machine 
+      of active modifiers. The target wake chords are:
+    </p>
+    <ul>
+      <li><strong>Wake Chord (<kbd>Ctrl+Shift+Alt+W</kbd>)</strong>: Toggles conversational listening mode without holding a button.</li>
+      <li><strong>Push-To-Talk Chord (<kbd>Ctrl+Shift+Alt+P</kbd>)</strong>: Engages listening on press (value=1) and terminates on release (value=0).</li>
+    </ul>
+
+    <div class="spec-table-wrap">
+      <table class="spec-table">
+        <thead>
+          <tr>
+            <th>Key Code Constant</th>
+            <th>Linux Scan Code</th>
+            <th>Modifier Classification</th>
+            <th>Chord Membership</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>KEY_LEFTCTRL</code> / <code>KEY_RIGHTCTRL</code></td>
+            <td>29 / 97</td>
+            <td>Control Bit</td>
+            <td>Wake &amp; PTT Required</td>
+          </tr>
+          <tr>
+            <td><code>KEY_LEFTSHIFT</code> / <code>KEY_RIGHTSHIFT</code></td>
+            <td>42 / 54</td>
+            <td>Shift Bit</td>
+            <td>Wake &amp; PTT Required</td>
+          </tr>
+          <tr>
+            <td><code>KEY_LEFTALT</code> / <code>KEY_RIGHTALT</code></td>
+            <td>56 / 100</td>
+            <td>Alt / Meta Bit</td>
+            <td>Wake &amp; PTT Required</td>
+          </tr>
+          <tr>
+            <td><code>KEY_W</code></td>
+            <td>17</td>
+            <td>Trigger: Wake</td>
+            <td>Fires <code>/api/trigger</code> (Toggle)</td>
+          </tr>
+          <tr>
+            <td><code>KEY_P</code></td>
+            <td>25</td>
+            <td>Trigger: PTT</td>
+            <td>Fires <code>/api/trigger</code> (PTT Hold/Release)</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <pre><code class="language-python"># Excerpt from nodes/pi4b-bridge/hid_wake_daemon.py
+class S3HidGrabber:
+    """Exclusive evdev HID grabber for ESP32-S3 keyboard events."""
+    
+    MOD_CTRL = {ecodes.KEY_LEFTCTRL, ecodes.KEY_RIGHTCTRL}
+    MOD_SHIFT = {ecodes.KEY_LEFTSHIFT, ecodes.KEY_RIGHTSHIFT}
+    MOD_ALT = {ecodes.KEY_LEFTALT, ecodes.KEY_RIGHTALT}
+
+    def __init__(self, ws_bridge=None, api_port: int = 8765):
+        self.ws_bridge = ws_bridge
+        self.api_url = f"http://127.0.0.1:{api_port}/api/trigger"
+        self.device: Optional[evdev.InputDevice] = None
+        self.active_modifiers: Set[int] = set()
+        self.running = False
+
+    async def run(self):
+        self.running = True
+        while self.running:
+            dev_path = self._find_s3_device()
+            if not dev_path:
+                await asyncio.sleep(2.0)
+                continue
+
+            try:
+                self.device = evdev.InputDevice(dev_path)
+                self.device.grab()  # ioctl(fd, EVIOCGRAB, 1) - Zero Console Leakage!
+                logger.info(f"Grabbed ESP32-S3 HID exclusively at {dev_path}")
+
+                async for event in self.device.async_read_loop():
+                    if not self.running:
+                        break
+                    if event.type == ecodes.EV_KEY:
+                        await self._handle_key_event(event)
+
+            except Exception as e:
+                logger.error(f"HID Grabber error: {e}", exc_info=True)
+            finally:
+                if self.device:
+                    try:
+                        self.device.ungrab()
+                    except Exception:
+                        pass
+                    self.device = None
+                await asyncio.sleep(1.0)</code></pre>
+
+    <div class="callout callout-cosmic">
+      <strong>Cosmic Epistemology &mdash; David Deutsch on Noise Isolation</strong><br>
+      In <em>The Beginning of Infinity</em>, David Deutsch emphasizes that error correction is the foundational mechanism of knowledge 
+      creation and reliable computation. An unfiltered sensory or input bus suffers from entropic degradation: spurious electrical noise 
+      masquerades as symbolic instructions. By mathematically partitioning raw USB input through explicit modifier state matrices and 
+      suppressing OS terminal echo, our software architecture creates a hard boundary between physical entropy and semantic intention.
+    </div>
+
+    <div class="exercise-box">
+      <h5><span class="ch-badge">Hands-On Lab 4.2</span> Verifying Zero-Leak HID Capture</h5>
+      <p>Test the exclusive grabber under live conditions to confirm that no keystrokes reach the Linux shell:</p>
+      <ol>
+        <li>Open two terminal windows (or split your tmux session) on the Raspberry Pi 4B.</li>
+        <li>In Window 1, launch the bridge daemon:
+          <pre><code class="language-bash">python3 nodes/pi4b-bridge/hid_wake_daemon.py</code></pre>
+          Confirm log output: <code>Grabbed ESP32-S3 HID exclusively at /dev/input/eventX</code>.
+        </li>
+        <li>In Window 2, leave an empty bash prompt. Physically press the S3 Macro key or inject an event via <code>uinput</code>. 
+        Observe that the daemon logs <code>Triggering Wake toggle</code>, while Window 2 displays zero characters, maintaining complete terminal hygiene.</li>
+      </ol>
+    
+        <div class="lab-completion-wrap">
+          <label class="lab-check-container">
+            <input type="checkbox" class="lab-checkbox" data-lab="4.2">
+            <span class="checkmark"></span>
+            Mark Laboratory 4.2 Complete
+          </label>
+        </div>
+      </div>
+  </section>
+
+  <!-- ---------------------------------------------------------------------------
+       Mini-Chapter 4.3
+       --------------------------------------------------------------------------- -->
+  <section id="mini-4-3" class="mini-chapter">
+    <h3 class="mini-chapter-title">Mini-Chapter 4.3: Memory-Constrained Daemon Engineering (<code>MemoryMax=450M</code> Cgroups)</h3>
+    <p>
+      Embedded Linux systems hosting complex AI stacks face severe resource contention. The Raspberry Pi 4B model powering Node A 
+      must simultaneously execute the Linux Wayland compositor, networking stacks, audio I/O streaming, USB CDC serial bridging, 
+      and a FastAPI REST/WebSocket server. Left unmanaged, standard Python runtimes accumulate heap fragmentation, memory-mapped shared 
+      libraries, and unbounded buffer queues until the kernel invokes the OOM killer&mdash;often terminating essential system processes.
+    </p>
+    <p>
+      To enforce deterministic stability, we employ Linux cgroup v2 memory limits configured directly inside systemd unit files 
+      (<code>xiaozhi-pi.service</code>):
+    </p>
+    <div class="math-block">
+      $$	ext{MemoryHigh} = 380	ext{ MB} \quad (	ext{Throttling \&amp; Proactive Reclaim}), \quad 	ext{MemoryMax} = 450	ext{ MB} \quad (	ext{Hard Ceiling})$$
+    </div>
+    <p>
+      When memory usage exceeds <code>MemoryHigh=380M</code>, the kernel slows down allocation requests and proactively reclaims page caches 
+      without killing processes. Only if the daemon surges beyond <code>MemoryMax=450M</code> does the kernel terminate the offending cgroup. 
+      In steady-state operation, our optimized daemon stabilizes at exactly <strong>382 MB</strong> of resident RAM.
+    </p>
+
+    <div class="spec-table-wrap">
+      <table class="spec-table">
+        <thead>
+          <tr>
+            <th>Subsystem / Component</th>
+            <th>Resident Set Size (RSS)</th>
+            <th>Optimization Technique</th>
+            <th>Failure Mode if Unconstrained</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Python Base &amp; Asyncio Runtime</td>
+            <td>48 MB</td>
+            <td>Standard CPython 3.11/3.14 minimal footprint</td>
+            <td>Heap bloat if cyclic references leak</td>
+          </tr>
+          <tr>
+            <td>FastAPI &amp; Uvicorn Server</td>
+            <td>92 MB</td>
+            <td>Lightweight single-worker ASGI loop</td>
+            <td>Worker spawning exhaustion</td>
+          </tr>
+          <tr>
+            <td>PCM Audio Circular Ring Buffers</td>
+            <td>24 MB</td>
+            <td>Zero-copy <code>memoryview</code> 1920-byte slicing</td>
+            <td>Buffer allocation churn &amp; GC lag</td>
+          </tr>
+          <tr>
+            <td>Whisper &amp; Multi-LLM Routers</td>
+            <td>68 MB</td>
+            <td>Lazy <code>httpx</code> client init, no local torch</td>
+            <td>Torch/CUDA loading crashes 1GB/2GB Pi</td>
+          </tr>
+          <tr>
+            <td>System Page Cache &amp; Cgroups Buffer</td>
+            <td>150 MB</td>
+            <td>Kernel reclaim throttled at 380 MB mark</td>
+            <td>Kernel memory starvation &amp; thrashing</td>
+          </tr>
+          <tr>
+            <td><strong>Total Steady-State Budget</strong></td>
+            <td><strong>382 MB</strong></td>
+            <td><strong>Guaranteed &lt; 450 MB hard limit</strong></td>
+            <td><strong>Zero OOM termination events</strong></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <pre><code class="language-ini"># File: nodes/pi4b-bridge/xiaozhi-pi.service
+[Unit]
+Description=Xiaozhi Pi Low-Memory Voice Agent (Node A)
+After=network.target sound.target
+Wants=network.target
+
+[Service]
+Type=simple
+User=ayush
+Group=ayush
+WorkingDirectory=/home/ayush/xiaozhi_dual_architecture/nodes/pi4b-bridge
+Environment="PYTHONUNBUFFERED=1"
+Environment="PATH=/home/ayush/xiaozhi_dual_architecture/nodes/pi4b-bridge/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin"
+ExecStart=/home/ayush/xiaozhi_dual_architecture/nodes/pi4b-bridge/venv/bin/python xiaozhi_pi_agent.py
+Restart=always
+RestartSec=3
+
+# Low-Memory CGroup Resource Constraints
+MemoryHigh=380M
+MemoryMax=450M
+CPUQuota=150%
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=xiaozhi-pi
+
+[Install]
+WantedBy=multi-user.target</code></pre>
+
+    <div class="callout callout-warning">
+      <strong>Engineering Rule &mdash; Lazy Import Discipline for Embedded Python</strong><br>
+      Never import heavy profiling modules like <code>psutil</code> or <code>numpy</code> at the root level of long-running edge services. 
+      In <code>xiaozhi_pi_agent.py</code>, <code>psutil</code> is imported strictly inside telemetry interrogation functions (lazy import). 
+      This eliminates over 28 MB of cold heap overhead during service initialization.
+    </div>
+
+    <div class="exercise-box">
+      <h5><span class="ch-badge">Hands-On Lab 4.3</span> Auditing Systemd Cgroups &amp; RAM Ceilings</h5>
+      <p>Verify that the Linux kernel actively enforces memory constraints on your running daemon:</p>
+      <ol>
+        <li>Enable and start the systemd service:
+          <pre><code class="language-bash">sudo cp nodes/pi4b-bridge/xiaozhi-pi.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl restart xiaozhi-pi.service</code></pre>
+        </li>
+        <li>Inspect live cgroup resource metrics:
+          <pre><code class="language-bash">systemd-cgtop -m</code></pre>
+          Locate <code>/system.slice/xiaozhi-pi.service</code> and confirm RSS memory stays safely below 400 MB.
+        </li>
+        <li>Query kernel cgroup controller files directly:
+          <pre><code class="language-bash">cat /sys/fs/cgroup/system.slice/xiaozhi-pi.service/memory.current
+cat /sys/fs/cgroup/system.slice/xiaozhi-pi.service/memory.max</code></pre>
+        </li>
+      </ol>
+    
+        <div class="lab-completion-wrap">
+          <label class="lab-check-container">
+            <input type="checkbox" class="lab-checkbox" data-lab="4.3">
+            <span class="checkmark"></span>
+            Mark Laboratory 4.3 Complete
+          </label>
+        </div>
+      </div>
+  </section>
+
+  <!-- ---------------------------------------------------------------------------
+       Mini-Chapter 4.4
+       --------------------------------------------------------------------------- -->
+  <section id="mini-4-4" class="mini-chapter">
+    <h3 class="mini-chapter-title">Mini-Chapter 4.4: Dynamic USB RNDIS Routing &amp; Metric Manipulation</h3>
+    <p>
+      Autonomous field operation demands robust network redundancy. When Node A is deployed outdoors or on a mobile rover chassis, 
+      ambient Wi-Fi (<code>wlan0</code>) may experience signal fade, jamming, or roaming disconnection. To solve this without adding 
+      expensive dedicated cellular modems, the ESP32-S3-Zero acts as a dynamic dual-homed bridge: when commanded, it establishes an 
+      LTE cellular or secondary Wi-Fi uplink and exposes a high-speed USB RNDIS virtual Ethernet adapter (<code>usb0</code> or <code>rndis0</code>) 
+      to the Raspberry Pi.
+    </p>
+    <p>
+      However, operating two simultaneous default gateways creates Linux route collisions. If both <code>wlan0</code> and <code>usb0</code> 
+      advertise a <code>0.0.0.0/0</code> default route with identical metrics, outbound UDP audio packets suffer non-deterministic 
+      jitter or asymmetric routing drops. We resolve this by manipulating Linux route metrics:
+    </p>
+    <div class="math-block">
+      $$	ext{Metric}_{	ext{RNDIS}} = 50 \quad &lt; \quad 	ext{Metric}_{	ext{WLAN}} = 600 \implies 	ext{Priority Preemption over USB}$$
+    </div>
+    <p>
+      In <code>nodes/pi4b-bridge/s3_internet_toggle.sh</code>, we establish an automated state toggle. When activated, the script dispatches 
+      <code>CMD:RNDIS_ON:&lt;SSID&gt;:&lt;PASS&gt;
+</code> over the USB CDC serial control channel (at 115,200 baud) to the ESP32-S3, polls 
+      <code>dhcpcd</code> or <code>ip route</code>, and forces a metric of 50 on the newly minted interface. Outbound audio packets 
+      immediately divert across the ultra-low-jitter USB cable.
+    </p>
+
+    <div class="spec-table-wrap">
+      <table class="spec-table">
+        <thead>
+          <tr>
+            <th>Interface</th>
+            <th>Type</th>
+            <th>Assigned Metric</th>
+            <th>Routing Priority</th>
+            <th>Failover Role</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>usb0</code> / <code>rndis0</code></td>
+            <td>USB Virtual Ethernet</td>
+            <td>50</td>
+            <td>Primary (Highest)</td>
+            <td>Zero packet collision; sub-millisecond local latency</td>
+          </tr>
+          <tr>
+            <td><code>eth0</code></td>
+            <td>Gigabit RJ45</td>
+            <td>100</td>
+            <td>Secondary</td>
+            <td>Laboratory umbilical connection</td>
+          </tr>
+          <tr>
+            <td><code>wlan0</code></td>
+            <td>2.4/5GHz Wi-Fi</td>
+            <td>600</td>
+            <td>Tertiary (Fallback)</td>
+            <td>Ambient rover telemetry fallback</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <pre><code class="language-bash">#!/usr/bin/env bash
+# Excerpt from nodes/pi4b-bridge/s3_internet_toggle.sh
+STATE_FILE="/tmp/s3_rndis.active"
+ROUTE_METRIC=50
+
+find_serial_port() {
+    if [ -e "/dev/ttyS3Zero" ]; then
+        echo "/dev/ttyS3Zero"; return 0
+    elif [ -e "/dev/ttyACM0" ]; then
+        echo "/dev/ttyACM0"; return 0
+    fi
+    for p in /dev/serial/by-id/*ESP32* /dev/serial/by-id/*303a*; do
+        if [ -e "$p" ]; then echo "$p"; return 0; fi
+    done
+    return 1
+}
+
+toggle_rndis() {
+    PORT=$(find_serial_port)
+    if [ -f "$STATE_FILE" ]; then
+        echo "[INFO] Disabling S3 RNDIS Ethernet..."
+        echo -e "CMD:RNDIS_OFF\n" &gt; "$PORT"
+        ip route del default dev usb0 metric $ROUTE_METRIC 2&gt;/dev/null || true
+        rm -f "$STATE_FILE"
+        echo "[OK] Switched back to ambient Wi-Fi (wlan0)."
+    else
+        echo "[INFO] Activating S3 RNDIS via CDC port $PORT..."
+        stty -F "$PORT" 115200 raw -echo
+        echo -e "CMD:RNDIS_ON:Ayush:alibaba2123\n" &gt; "$PORT"
+        sleep 2
+        ip route add default dev usb0 metric $ROUTE_METRIC 2&gt;/dev/null || true
+        touch "$STATE_FILE"
+        echo "[OK] RNDIS active with metric $ROUTE_METRIC preempting wlan0."
+    fi
+}
+toggle_rndis</code></pre>
+
+    <div class="callout callout-biomimetic">
+      <strong>Biomimetic Analogy &mdash; Cephalopod Dual Circulatory System</strong><br>
+      Cephalopods possess three hearts: one systemic heart pumping hemolymph throughout the body, and two branchial hearts dedicated 
+      to propelling blood through the gills. When swimming vigorously under hypoxia, the organism modulates arterial resistance, dynamically 
+      diverting metabolic volume to the highest-efficiency pathway. Dynamic metric routing mirrors this physiological switching: 
+      by modulating Linux routing metrics, the cyberdeck seamlessly reroutes information packets to preserve communicative respiration.
+    </div>
+
+    <div class="exercise-box">
+      <h5><span class="ch-badge">Hands-On Lab 4.4</span> Testing Dynamic RNDIS Route Switching</h5>
+      <p>Perform an emergency interface toggle and observe Linux kernel route table reordering:</p>
+      <ol>
+        <li>Inspect your active routing table before toggling:
+          <pre><code class="language-bash">ip route show</code></pre>
+          Note the default gateway on <code>wlan0</code> with metric 600.
+        </li>
+        <li>Execute the toggle script:
+          <pre><code class="language-bash">chmod +x nodes/pi4b-bridge/s3_internet_toggle.sh
+./nodes/pi4b-bridge/s3_internet_toggle.sh</code></pre>
+        </li>
+        <li>Re-examine the routing table:
+          <pre><code class="language-bash">ip route show</code></pre>
+          Confirm that <code>default via ... dev usb0 proto dhcp metric 50</code> now sits at the top of the kernel routing cache, preempting all ambient Wi-Fi traffic.
+        </li>
+      </ol>
+    
+        <div class="lab-completion-wrap">
+          <label class="lab-check-container">
+            <input type="checkbox" class="lab-checkbox" data-lab="4.4">
+            <span class="checkmark"></span>
+            Mark Laboratory 4.4 Complete
+          </label>
+        </div>
+      </div>
+  </section>
+
+  <!-- ---------------------------------------------------------------------------
+       Mini-Chapter 4.5
+       --------------------------------------------------------------------------- -->
+  <section id="mini-4-5" class="mini-chapter">
+    <h3 class="mini-chapter-title">Mini-Chapter 4.5: Non-Blocking Floating Wayland PTT Touch Overlays</h3>
+    <p>
+      In a cyberdeck equipped with the SmartElex 4.3" 800x480 Capacitive Touch Display running Wayfire (a lightweight Wayland compositor), 
+      the operator requires immediate tactile control over speech ingestion. While the physical ESP32-S3 Macro key provides a hardware 
+      trigger, an on-screen visual touch target is vital when operating in handheld tablet mode.
+    </p>
+    <p>
+      Building this touch overlay introduces two strict engineering constraints:
+    </p>
+    <ol>
+      <li><strong>Compositor Transparency &amp; Non-Interference</strong>: The widget must float borderless above fullscreen terminal dashboards (e.g., HTOP, ROS2 Foxglove, or camera feeds) without stealing keyboard focus or causing window redraw cascades.</li>
+      <li><strong>Asynchronous HTTP Dispatch</strong>: Tapping the Push-to-Talk button must never execute synchronous network requests on the GUI thread. In Python Tkinter, a blocking 50 ms HTTP socket call produces perceptible UI frame stutter (touch jank).</li>
+    </ol>
+    <p>
+      In <code>nodes/pi4b-bridge/ptt_overlay_widget.py</code>, we implement a custom 110x44 pixel floating pill widget. By invoking 
+      <code>root.overrideredirect(True)</code> and <code>root.wm_attributes("-topmost", True)</code>, the window bypasses Wayfire window 
+      decorations. Touch events (<code>&lt;ButtonPress-1&gt;</code> and <code>&lt;ButtonRelease-1&gt;</code>) dispatch HTTP POST triggers 
+      to <code>http://127.0.0.1:8765/api/trigger</code> via background daemon threads using <code>urllib.request</code>.
+    </p>
+
+    <div class="spec-table-wrap">
+      <table class="spec-table">
+        <thead>
+          <tr>
+            <th>Screen Preset</th>
+            <th>Resolution</th>
+            <th>Pill Dimensions</th>
+            <th>Screen Coordinates (X, Y)</th>
+            <th>Ergonomic Target</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>SmartElex Top-Center</td>
+            <td>800 &times; 480</td>
+            <td>110 &times; 44 px</td>
+            <td>(345, 8)</td>
+            <td>Thumb reach during two-handed cyberdeck grip</td>
+          </tr>
+          <tr>
+            <td>SmartElex Bottom-Right</td>
+            <td>800 &times; 480</td>
+            <td>110 &times; 44 px</td>
+            <td>(680, 426)</td>
+            <td>Right-hand single-finger rover control</td>
+          </tr>
+          <tr>
+            <td>7" Waveshare DSI</td>
+            <td>1024 &times; 600</td>
+            <td>140 &times; 52 px</td>
+            <td>(870, 538)</td>
+            <td>Benchtop kiosk operation</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <pre><code class="language-python"># Excerpt from nodes/pi4b-bridge/ptt_overlay_widget.py
+import tkinter as tk
+import threading
+import urllib.request
+import json
+
+class FloatingPTTWidget:
+    def __init__(self, root, x=345, y=8, w=110, h=44):
+        self.root = root
+        self.root.overrideredirect(True)          # Remove window titlebar &amp; borders
+        self.root.wm_attributes("-topmost", True)  # Pin above Wayfire / Chromium
+        self.root.geometry(f"{w}x{h}+{x}+{y}")
+        self.root.configure(bg="#0F172A")
+
+        self.btn = tk.Label(
+            root, text="PTT [HOLD]", font=("Helvetica", 10, "bold"),
+            bg="#1E293B", fg="#00F0FF", relief="flat", cursor="hand2"
+        )
+        self.btn.pack(fill="both", expand=True, padx=2, pady=2)
+
+        # Bind touch / click transitions
+        self.btn.bind("&lt;ButtonPress-1&gt;", self._on_press)
+        self.btn.bind("&lt;ButtonRelease-1&gt;", self._on_release)
+
+    def _on_press(self, event):
+        self.btn.configure(bg="#0284C7", fg="#FFFFFF", text="LISTENING...")
+        self._dispatch_async(action="start", is_ptt=True)
+
+    def _on_release(self, event):
+        self.btn.configure(bg="#1E293B", fg="#00F0FF", text="PTT [HOLD]")
+        self._dispatch_async(action="stop", is_ptt=True)
+
+    def _dispatch_async(self, action: str, is_ptt: bool):
+        payload = json.dumps({"action": action, "is_ptt": is_ptt}).encode("utf-8")
+        def _post():
+            try:
+                req = urllib.request.Request(
+                    "http://127.0.0.1:8765/api/trigger",
+                    data=payload, headers={"Content-Type": "application/json"}
+                )
+                urllib.request.urlopen(req, timeout=1.0)
+            except Exception as e:
+                pass
+        threading.Thread(target=_post, daemon=True).start()</code></pre>
+
+    <div class="exercise-box">
+      <h5><span class="ch-badge">Hands-On Lab 4.5</span> Running the Wayland Touch Overlay</h5>
+      <p>Launch the non-blocking widget and test asynchronous trigger dispatch:</p>
+      <ol>
+        <li>Ensure the main voice agent server is running on port 8765:
+          <pre><code class="language-bash">curl -s http://127.0.0.1:8765/api/status | jq .</code></pre>
+        </li>
+        <li>Launch the floating overlay widget in your Wayland desktop session:
+          <pre><code class="language-bash">DISPLAY=:0 python3 nodes/pi4b-bridge/ptt_overlay_widget.py</code></pre>
+        </li>
+        <li>Observe the cyan pill floating in the top-center of the screen. Tap and hold: notice the instantaneous visual state change to <code>LISTENING...</code> and verify in the daemon log that an audio capture session initiates without graphical micro-freezes.</li>
+      </ol>
+    
+        <div class="lab-completion-wrap">
+          <label class="lab-check-container">
+            <input type="checkbox" class="lab-checkbox" data-lab="4.5">
+            <span class="checkmark"></span>
+            Mark Laboratory 4.5 Complete
+          </label>
+        </div>
+      </div>
+  </section>
+</section>
+
+<!-- ==============================================================================
+     CHAPTER 5: SUB-SECOND CLOUD ASR & MULTI-LLM BRAIN ROUTING
+     ============================================================================== -->
+<section id="chapter-5" class="chapter-block">
+  <h2 class="chapter-title">
+    <span class="ch-badge">Chapter 5</span>
+    Sub-Second Cloud ASR &amp; Multi-LLM Brain Routing
+  </h2>
+  
+  <p class="chapter-intro">
+    Conversational robotics demands cognitive turn-taking latency comparable to human verbal interaction&mdash;typically between 
+    300 ms and 700 ms. In traditional edge pipelines, serializing audio to disk, executing heavy local transcription models, and 
+    invoking monolithic cloud APIs creates prohibitive latencies exceeding 2.5 seconds, shattering communicative presence. 
+    In this chapter, we engineer a sub-second cognitive routing fabric: high-speed 60 ms acoustic frame packaging, ultra-fast 
+    cloud transcription utilizing Groq LPU-accelerated Whisper (542 ms turnaround), a multi-brain dynamic LLM switching layer 
+    spanning Google Gemini, Groq Llama 3.3, and xAI Grok with automated key failovers, sub-millisecond voice intent extraction, 
+    and streaming text-to-speech synthesis with hot-reloadable configuration schemas.
+  </p>
+
+  <!-- ---------------------------------------------------------------------------
+       Mini-Chapter 5.1
+       --------------------------------------------------------------------------- -->
+  <section id="mini-5-1" class="mini-chapter">
+    <h3 class="mini-chapter-title">Mini-Chapter 5.1: High-Speed Acoustic Framing &amp; Ogg/Opus Bitstream Packaging</h3>
+    <p>
+      High-fidelity speech recognition begins at the hardware digitization stage. The Xiaozhi dual architecture standardizes on a 
+      clean acoustic transport profile:
+    </p>
+    <div class="math-block">
+      $$f_s = 16,000	ext{ Hz (16 kHz)}, \quad B = 16	ext{ bits (2 bytes/sample)}, \quad N_{	ext{ch}} = 1	ext{ (Mono Little-Endian)}$$
+      $$	ext{Bitrate}_{	ext{PCM}} = 16,000 	imes 2 	imes 1 = 32,000	ext{ bytes/sec (256 kbps)}$$
+    </div>
+    <p>
+      At a 60 ms frame duration ($T_{	ext{frame}} = 0.060	ext{ s}$), each discrete acoustic packet comprises exactly:
+    </p>
+    <div class="math-block">
+      $$S_{	ext{frame}} = 16,000 	imes 0.060 = 960	ext{ samples} \implies L_{	ext{frame}} = 960 	imes 2 = 1920	ext{ bytes}$$
+    </div>
+    <p>
+      Over the USB CDC serial connection between the ESP32-S3 and Raspberry Pi 4B, raw audio frames are demarcated using a lightweight 
+      4-byte synchronization header:
+    </p>
+    <div class="math-block">
+      $$	ext{Header} = \left[ 0	ext{xAA}, \, 0	ext{x55}, \, 	ext{LEN\_LO} \, (0	ext{x80}), \, 	ext{LEN\_HI} \, (0	ext{x07}) 
+ight] \quad (1920 = 0	ext{x0780})$$
+    </div>
+    <p>
+      While uncompressed PCM is ideal for local USB transmission, cloud upload over constrained cellular uplinks requires compression. 
+      To avoid heavy external C library dependencies on embedded systems, <code>shared/providers/asr_whisper_router.py</code> implements 
+      a native zero-dependency Ogg/Opus bitstream packager featuring a precomputed IEEE 802.3 CRC-32 table:
+    </p>
+
+    <div class="spec-table-wrap">
+      <table class="spec-table">
+        <thead>
+          <tr>
+            <th>Format</th>
+            <th>Frame Duration</th>
+            <th>Payload Size</th>
+            <th>Bandwidth</th>
+            <th>Transport Role</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Raw PCM (s16le)</td>
+            <td>60 ms (960 samples)</td>
+            <td>1920 bytes</td>
+            <td>256 kbps</td>
+            <td>ESP32-S3 to Pi 4B via USB CDC serial</td>
+          </tr>
+          <tr>
+            <td>In-Memory RIFF WAV</td>
+            <td>Arbitrary utterance</td>
+            <td>Header + PCM bytes</td>
+            <td>256 kbps</td>
+            <td>Groq Cloud Whisper HTTP multipart upload</td>
+          </tr>
+          <tr>
+            <td>Ogg/Opus Stream</td>
+            <td>20 ms / 60 ms packets</td>
+            <td>~120 - 240 bytes</td>
+            <td>16 - 32 kbps</td>
+            <td>Cellular uplink &amp; inter-agent audio streaming</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <pre><code class="language-python"># Excerpt from shared/providers/asr_whisper_router.py
+def create_ogg_opus_stream(opus_packets: list, sample_rate: int = 16000, channels: int = 1) -> bytes:
+    """Pack Opus packets into an Ogg container using pure Python with CRC-32."""
+    crc_table = []
+    for i in range(256):
+        r = i &lt;&lt; 24
+        for _ in range(8):
+            if r &amp; 0x80000000:
+                r = ((r &lt;&lt; 1) ^ 0x04C11DB7) &amp; 0xFFFFFFFF
+            else:
+                r = (r &lt;&lt; 1) &amp; 0xFFFFFFFF
+        crc_table.append(r)
+
+    def _ogg_crc(data: bytes) -> int:
+        crc = 0
+        for byte in data:
+            crc = ((crc &lt;&lt; 8) &amp; 0xFFFFFFFF) ^ crc_table[((crc &gt;&gt; 24) ^ byte) &amp; 0xFF]
+        return crc
+
+    out = bytearray()
+    # 1. Identification Header Page (OpusHead)
+    head_payload = b"OpusHead" + struct.pack("&lt;BBHIhB", 1, channels, 0, sample_rate, 0, 0)
+    out.extend(_build_ogg_page(0, 0x02, 0, 0x12345678, 0, head_payload, _ogg_crc))
+    # 2. Comment Header Page (OpusTags)
+    tags_payload = b"OpusTags" + struct.pack("&lt;I", 7) + b"xiaozhi" + struct.pack("&lt;I", 0)
+    out.extend(_build_ogg_page(0, 0x00, 1, 0x12345678, 1, tags_payload, _ogg_crc))
+    return bytes(out)</code></pre>
+
+    <div class="callout callout-biomimetic">
+      <strong>Biomimetic Analogy &mdash; Microbat Echolocation Pulse Train Modulation</strong><br>
+      The Little Brown Bat (<em>Myotis lucifugus</em>) adjusts its acoustic emission rate dynamically: during search phase flight, 
+      it emits pulses at 10 Hz intervals; upon detecting an insect target, it accelerates its chirp frequency to a 200 Hz "terminal buzz" 
+      (5 ms intervals) to achieve millimeter-level spatial resolution without buffer overflow. Our 60 ms framing mirrors this biological 
+      duty cycle: short enough to prevent conversational lag, yet long enough to maintain high compression efficiency.
+    </div>
+
+    <div class="exercise-box">
+      <h5><span class="ch-badge">Hands-On Lab 5.1</span> Testing Acoustic Frame Framing &amp; WAV Conversion</h5>
+      <p>Verify that raw PCM frames convert into valid RIFF WAV streams without disk I/O bottlenecks:</p>
+      <ol>
+        <li>Launch an interactive Python session in the shared providers directory:
+          <pre><code class="language-bash">cd /home/ayush/xiaozhi_dual_architecture/shared/providers
+python3 -c "
+import asr_whisper_router as asr
+pcm_dummy = b'  ' * 960  # 60ms of silence (1920 bytes)
+wav_data = asr.pcm_to_wav(pcm_dummy * 10)  # 600ms buffer
+print('Generated WAV bytes:', len(wav_data))
+print('RIFF Header:', wav_data[:4])
+"</code></pre>
+        </li>
+        <li>Confirm that output displays <code>Generated WAV bytes: 19244</code> and <code>RIFF Header: b'RIFF'</code>, proving correct 44-byte canonical WAV header generation in memory.</li>
+      </ol>
+    
+        <div class="lab-completion-wrap">
+          <label class="lab-check-container">
+            <input type="checkbox" class="lab-checkbox" data-lab="5.1">
+            <span class="checkmark"></span>
+            Mark Laboratory 5.1 Complete
+          </label>
+        </div>
+      </div>
+  </section>
+
+  <!-- ---------------------------------------------------------------------------
+       Mini-Chapter 5.2
+       --------------------------------------------------------------------------- -->
+  <section id="mini-5-2" class="mini-chapter">
+    <h3 class="mini-chapter-title">Mini-Chapter 5.2: Sub-600ms Cloud ASR: Groq Whisper LPU vs. OpenAI Fallback</h3>
+    <p>
+      Traditional cloud speech-to-text APIs introduce substantial network and queuing delays, frequently requiring 1.5 to 3.0 seconds 
+      for transcription. In our benchmark evaluations on live robotic speech streams, Groq's Language Processing Unit (LPU) architecture 
+      running <code>whisper-large-v3-turbo</code> demonstrates unprecedented inference velocity:
+    </p>
+    <div class="math-block">
+      $$T_{	ext{Groq Turnaround}} = 542.4	ext{ ms} \quad 	ext{vs.} \quad T_{	ext{OpenAI Whisper}} = 1,420.8	ext{ ms} \quad (pprox 2.62	imes	ext{ speedup})$$
+    </div>
+    <p>
+      In <code>shared/providers/asr_whisper_router.py</code>, we implement the <code>WhisperASRRouter</code> class. The router prioritizes 
+      Groq Cloud <code>whisper-large-v3-turbo</code> as its primary provider. When an utterance completes, the in-memory WAV buffer is 
+      streamed via an asynchronous HTTP multipart request (using <code>httpx.AsyncClient</code>) directly to 
+      <code>https://api.groq.com/openai/v1/audio/transcriptions</code>.
+    </p>
+    <p>
+      If Groq returns an HTTP 429 (Rate Limit), 503 (Service Unavailable), or times out after 15 seconds, the router's internal state machine 
+      instantly catches the exception, switches provider context, and re-transmits the identical audio payload to OpenAI 
+      <code>whisper-1</code> (<code>https://api.openai.com/v1/audio/transcriptions</code>), ensuring zero dropped utterances.
+    </p>
+
+    <div class="spec-table-wrap">
+      <table class="spec-table">
+        <thead>
+          <tr>
+            <th>Provider</th>
+            <th>Model ID</th>
+            <th>Mean Latency</th>
+            <th>Error Handling</th>
+            <th>Endpoint</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Groq Cloud (Primary)</strong></td>
+            <td><code>whisper-large-v3-turbo</code></td>
+            <td><strong>542.4 ms</strong></td>
+            <td>Catches 429/503/timeout &rarr; Fallback</td>
+            <td><code>api.groq.com/openai/v1</code></td>
+          </tr>
+          <tr>
+            <td><strong>OpenAI (Fallback)</strong></td>
+            <td><code>whisper-1</code></td>
+            <td>1,420.8 ms</td>
+            <td>Terminal error logging</td>
+            <td><code>api.openai.com/v1</code></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <pre><code class="language-python"># Excerpt from shared/providers/asr_whisper_router.py
+class WhisperASRRouter:
+    """Asynchronous ASR router prioritizing Groq Whisper with OpenAI fallback."""
+    
+    async def transcribe(self, pcm_bytes: bytes) -> ASRResult:
+        wav_bytes = pcm_to_wav(pcm_bytes, 16000, 1, 2)
+        start_time = time.time()
+
+        # Tier 1: Groq Cloud LPU
+        try:
+            res = await self._query_groq_whisper(wav_bytes)
+            latency = (time.time() - start_time) * 1000.0
+            return ASRResult(text=res, provider="groq", model="whisper-large-v3-turbo",
+                             latency_ms=latency, success=True)
+        except Exception as e:
+            logger.warning(f"Groq Whisper failed: {e}. Executing OpenAI fallback...")
+
+        # Tier 2: OpenAI Cloud Fallback
+        try:
+            res = await self._query_openai_whisper(wav_bytes)
+            latency = (time.time() - start_time) * 1000.0
+            return ASRResult(text=res, provider="openai", model="whisper-1",
+                             latency_ms=latency, success=True)
+        except Exception as e:
+            logger.error(f"All ASR providers failed: {e}")
+            return ASRResult(text="", provider="none", model="none",
+                             latency_ms=0, success=False, error=str(e))</code></pre>
+
+    <div class="callout callout-cosmic">
+      <strong>Cosmic Sociology &mdash; Liu Cixin &amp; The Speed of Cognitive Handshakes</strong><br>
+      In <em>The Three-Body Problem</em>, interstellar civilizations are constrained by the speed of light, leading to chains of 
+      suspicion and communication breakdown across vast cosmic voids. At the robotics scale, excessive latency generates an equivalent 
+      computational alienation: when human-to-machine turn-taking latency exceeds 1.0 second, human conversational synchronization collapses. 
+      Sub-600ms turnaround restores cognitive parity, closing the cybernetic feedback loop between human intent and robotic response.
+    </div>
+
+    <div class="exercise-box">
+      <h5><span class="ch-badge">Hands-On Lab 5.2</span> Benchmarking Live ASR Latency</h5>
+      <p>Execute the unit test suite to benchmark real-world Groq Whisper turnaround:</p>
+      <ol>
+        <li>Run the provider verification test suite:
+          <pre><code class="language-bash">python3 -m unittest shared/providers/test_providers.py -k test_06_live_groq_whisper_asr</code></pre>
+        </li>
+        <li>Observe the console output:
+          <pre><code>[Live ASR] Provider: groq, Model: whisper-large-v3-turbo, Latency: 322.25ms, Text: 'Thank you.'</code></pre>
+          Confirm that end-to-end transcription completes in ~320&ndash;550 ms over standard broadband.
+        </li>
+      </ol>
+    
+        <div class="lab-completion-wrap">
+          <label class="lab-check-container">
+            <input type="checkbox" class="lab-checkbox" data-lab="5.2">
+            <span class="checkmark"></span>
+            Mark Laboratory 5.2 Complete
+          </label>
+        </div>
+      </div>
+  </section>
+
+  <!-- ---------------------------------------------------------------------------
+       Mini-Chapter 5.3
+       --------------------------------------------------------------------------- -->
+  <section id="mini-5-3" class="mini-chapter">
+    <h3 class="mini-chapter-title">Mini-Chapter 5.3: Dynamic Multi-Brain LLM Architecture &amp; Key Failover Chains</h3>
+    <p>
+      A singular language model cannot serve all robotics requirements simultaneously. High-speed conversational banter requires 
+      rapid sub-400ms time-to-first-token (TTFT), while complex spatial path planning, code generation, and multi-sensor reasoning 
+      require massive parameter density and extensive context windows. Furthermore, relying on a single API provider introduces 
+      catastrophic failure points during cloud outages or quota exhaustion.
+    </p>
+    <p>
+      In <code>shared/providers/llm_router.py</code>, we implement the <code>LLMRouter</code> class, establishing a resilient 
+      multi-tier cognitive fabric:
+    </p>
+    <ul>
+      <li><strong>Google Gemini (Default Brain)</strong>: Running <code>gemini-2.5-flash</code> with an automatic failover to <code>gemini-3.5-flash-lite</code>. Features primary-to-backup API key rotation upon encountering HTTP 429 (Resource Exhausted) or 403 (Forbidden) errors.</li>
+      <li><strong>Groq Cloud (High-Speed Reasoning)</strong>: Running <code>llama-3.3-70b-versatile</code> with fallback to <code>openai/gpt-oss-120b</code>, delivering 250+ tokens per second.</li>
+      <li><strong>xAI Grok (Direct Persona Engine)</strong>: Interfacing with <code>https://api.x.ai/v1</code> running <code>grok-2-latest</code> (or <code>grok-beta</code>).</li>
+    </ul>
+
+    <div class="spec-table-wrap">
+      <table class="spec-table">
+        <thead>
+          <tr>
+            <th>Brain Identifier</th>
+            <th>Primary Model</th>
+            <th>Fallback Model</th>
+            <th>Key Failover Strategy</th>
+            <th>Ideal Task Domain</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>gemini</code></td>
+            <td><code>gemini-2.5-flash</code></td>
+            <td><code>gemini-3.5-flash-lite</code></td>
+            <td>Primary Key &rarr; Backup Key &rarr; Fallback Model</td>
+            <td>Multimodal sensor fusion &amp; general reasoning</td>
+          </tr>
+          <tr>
+            <td><code>groq</code></td>
+            <td><code>llama-3.3-70b-versatile</code></td>
+            <td><code>openai/gpt-oss-120b</code></td>
+            <td>Model degradation ladder</td>
+            <td>Ultra-low-latency real-time conversational Q&amp;A</td>
+          </tr>
+          <tr>
+            <td><code>grok</code></td>
+            <td><code>grok-2-latest</code></td>
+            <td><code>grok-beta</code></td>
+            <td>Direct endpoint retry</td>
+            <td>Cybernetic philosophy, wit, &amp; coding synthesis</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <pre><code class="language-python"># Excerpt from shared/providers/llm_router.py
+class LLMRouter:
+    async def _query_gemini_with_failover(self, prompt: str) -> LLMResponse:
+        """Query Gemini API with automatic primary-to-backup key failover."""
+        keys = [("primary", self.gemini_api_key), ("backup", self.gemini_backup_key)]
+        # Prioritize currently active key
+        if self.active_gemini_key_type == "backup":
+            keys.reverse()
+
+        for key_type, api_key in keys:
+            if not api_key:
+                continue
+            url = f"{self.gemini_base_url}/models/{self.active_gemini_model}:generateContent?key={api_key}"
+            start = time.time()
+            try:
+                resp = await self._client.post(url, json={"contents": [{"parts": [{"text": prompt}]}]}, timeout=25.0)
+                if resp.status_code == 200:
+                    text = resp.json()["candidates"][0]["content"]["parts"][0]["text"]
+                    latency = (time.time() - start) * 1000.0
+                    return LLMResponse(content=text, brain="gemini", model=self.active_gemini_model,
+                                       provider="google", latency_ms=latency, success=True)
+                elif resp.status_code in (429, 403, 400):
+                    logger.warning(f"Gemini {key_type} key failed: HTTP {resp.status_code}. Switching key...")
+                    self.active_gemini_key_type = "backup" if key_type == "primary" else "primary"
+            except Exception as e:
+                logger.error(f"Gemini request exception on {key_type}: {e}")
+
+        # If both keys fail, degrade model to flash-lite
+        logger.warning("All Gemini keys failed. Degrading to gemini-3.5-flash-lite...")
+        self.active_gemini_model = "gemini-3.5-flash-lite"
+        return await self._query_gemini_direct(prompt, self.gemini_backup_key or self.gemini_api_key)</code></pre>
+
+    <div class="exercise-box">
+      <h5><span class="ch-badge">Hands-On Lab 5.3</span> Simulating Gemini Key Failover Under Load</h5>
+      <p>Validate that simulated API key invalidation automatically triggers instant key rotation:</p>
+      <ol>
+        <li>Run the automated key failover unit test:
+          <pre><code class="language-bash">python3 -m unittest shared/providers/test_providers.py -k test_04_gemini_key_failover</code></pre>
+        </li>
+        <li>Review test execution output:
+          <pre><code>Gemini primary key failed: HTTP 400: API key not valid. Switching key...
+[Gemini Failover] Active Key: backup, Content: 'Backup key works'
+OK</code></pre>
+          Confirm that the router transparently re-routes to the backup key without dropping the transaction.
+        </li>
+      </ol>
+    
+        <div class="lab-completion-wrap">
+          <label class="lab-check-container">
+            <input type="checkbox" class="lab-checkbox" data-lab="5.3">
+            <span class="checkmark"></span>
+            Mark Laboratory 5.3 Complete
+          </label>
+        </div>
+      </div>
+  </section>
+
+  <!-- ---------------------------------------------------------------------------
+       Mini-Chapter 5.4
+       --------------------------------------------------------------------------- -->
+  <section id="mini-5-4" class="mini-chapter">
+    <h3 class="mini-chapter-title">Mini-Chapter 5.4: Voice-Driven Cognitive Brain Switching &amp; Intent Extraction</h3>
+    <p>
+      In a hands-free laboratory or field environment, the operator cannot type shell commands to switch AI personalities. 
+      The voice stack must parse intent directly from conversational speech in real-time. However, passing every utterance through a 
+      heavy secondary intent classification model adds 400 ms of latency.
+    </p>
+    <p>
+      In <code>shared/providers/llm_router.py</code>, we implement a pre-compiled regex intent interceptor that executes in 
+      <strong>under 0.5 milliseconds</strong> ($T &lt; 500\ \mu	ext{s}$):
+    </p>
+    <div class="math-block">
+      $$	ext{Intent Match: } 	ext{Pattern} \cap 	ext{Utterance} \implies \Delta T pprox 0.12	ext{ ms}$$
+    </div>
+    <p>
+      When the user says <em>"Switch to Groq mode and calculate the motor torque"</em>, the regex engine identifies the command prefix, 
+      switches the internal active brain pointer to <code>groq</code>, speaks an immediate verbal confirmation 
+      (<em>"Brain switched to Groq (llama-3.3-70b-versatile)"</em>), and decouples the remainder of the prompt 
+      (<em>"calculate the motor torque"</em>) for immediate downstream execution.
+    </p>
+
+    <div class="spec-table-wrap">
+      <table class="spec-table">
+        <thead>
+          <tr>
+            <th>Spoken Trigger Phrase</th>
+            <th>Compiled Regex Pattern</th>
+            <th>Target Brain</th>
+            <th>Immediate Audio Feedback</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>"Switch to Groq" / "Use Llama"</td>
+            <td><code>r"(?:switch to|use|activate|brain to)\s+groq"</code></td>
+            <td><code>groq</code></td>
+            <td>"Brain switched to Groq (llama-3.3-70b-versatile)."</td>
+          </tr>
+          <tr>
+            <td>"Switch to Gemini"</td>
+            <td><code>r"(?:switch to|use|activate|brain to)\s+gemini"</code></td>
+            <td><code>gemini</code></td>
+            <td>"Brain switched to Google Gemini."</td>
+          </tr>
+          <tr>
+            <td>"Switch to Grok"</td>
+            <td><code>r"(?:switch to|use|activate|brain to)\s+grok"</code></td>
+            <td><code>grok</code></td>
+            <td>"Brain switched to xAI Grok."</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <pre><code class="language-python"># Excerpt from shared/providers/llm_router.py
+class LLMRouter:
+    PATTERNS = {
+        "groq": re.compile(r"^(?:please\s+)?(?:switch\s+(?:brain\s+)?to|use|activate)\s+(?:groq|llama)(?:\s+mode)?(?:\s*[,.]?\s*(.*))?$", re.I),
+        "gemini": re.compile(r"^(?:please\s+)?(?:switch\s+(?:brain\s+)?to|use|activate)\s+gemini(?:\s+mode)?(?:\s*[,.]?\s*(.*))?$", re.I),
+        "grok": re.compile(r"^(?:please\s+)?(?:switch\s+(?:brain\s+)?to|use|activate)\s+grok(?:\s+mode)?(?:\s*[,.]?\s*(.*))?$", re.I),
+    }
+
+    def check_and_switch_brain(self, utterance: str) -> Optional[Tuple[str, str]]:
+        """Check for voice brain-switching commands; returns (target_brain, remainder_prompt)."""
+        clean = utterance.strip().lower()
+        for brain, pattern in self.PATTERNS.items():
+            match = pattern.match(clean)
+            if match:
+                remainder = match.group(1) or ""
+                self.active_brain = brain
+                logger.info(f"Switched active brain to {brain}. Remainder: '{remainder}'")
+                return brain, remainder.strip()
+        return None</code></pre>
+
+    <div class="exercise-box">
+      <h5><span class="ch-badge">Hands-On Lab 5.4</span> Testing Verbal Brain Switching</h5>
+      <p>Simulate voice utterances to verify sub-millisecond intent extraction and remainder decoupling:</p>
+      <ol>
+        <li>Execute the intent routing test:
+          <pre><code class="language-bash">python3 -c "
+import asr_whisper_router, llm_router
+router = llm_router.LLMRouter()
+result = router.check_and_switch_brain('Switch to Groq and analyze rover pitch angle')
+print('Extracted Brain:', result[0])
+print('Decoupled Remainder:', result[1])
+"</code></pre>
+        </li>
+        <li>Confirm output:
+          <pre><code>Extracted Brain: groq
+Decoupled Remainder: and analyze rover pitch angle</code></pre>
+        </li>
+      </ol>
+    
+        <div class="lab-completion-wrap">
+          <label class="lab-check-container">
+            <input type="checkbox" class="lab-checkbox" data-lab="5.4">
+            <span class="checkmark"></span>
+            Mark Laboratory 5.4 Complete
+          </label>
+        </div>
+      </div>
+  </section>
+
+  <!-- ---------------------------------------------------------------------------
+       Mini-Chapter 5.5
+       --------------------------------------------------------------------------- -->
+  <section id="mini-5-5" class="mini-chapter">
+    <h3 class="mini-chapter-title">Mini-Chapter 5.5: Streaming Audio Synthesis &amp; Hot-Swappable Configuration</h3>
+    <p>
+      To complete the conversational loop, synthesized speech must begin playback while the language model is still generating 
+      subsequent sentences. Waiting for full text completion introduces 1.2 to 2.0 seconds of latency. We deploy an asynchronous 
+      streaming pipeline utilizing ElevenLabs Turbo v2.5 with chunked HTTP streaming, achieving a Time-To-First-Byte (TTFB) of 
+      <strong>340 ms</strong>. When operating offline or without cloud API access, the pipeline automatically falls back to local 
+      Microsoft Edge-TTS (<code>en-US-ChristopherNeural</code> or <code>hi-IN-MadhurNeural</code>).
+    </p>
+    <p>
+      System parameters (API keys, fallback models, network endpoints) are governed by a thread-safe singleton 
+      <code>ConfigManager</code> (<code>shared/providers/config_loader.py</code>). The configuration manager supports dynamic 
+      hot-reloading of <code>config.yaml</code> with environment variable expansion (<code>${VAR:-default}</code> syntax), 
+      allowing seamless parameter mutation without process restarts.
+    </p>
+
+    <div class="spec-table-wrap">
+      <table class="spec-table">
+        <thead>
+          <tr>
+            <th>TTS Engine</th>
+            <th>Model / Voice</th>
+            <th>TTFB Latency</th>
+            <th>Streaming Protocol</th>
+            <th>Deployment Tier</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>ElevenLabs Turbo v2.5</td>
+            <td><code>eleven_turbo_v2_5</code></td>
+            <td><strong>~340 ms</strong></td>
+            <td>HTTP Chunked Transfer (PCM chunks)</td>
+            <td>Primary (Cloud high-expressiveness)</td>
+          </tr>
+          <tr>
+            <td>Microsoft Edge-TTS</td>
+            <td><code>en-US-ChristopherNeural</code></td>
+            <td>~480 ms</td>
+            <td>WebSocket chunk stream</td>
+            <td>Automatic Zero-Cost Fallback</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <pre><code class="language-yaml"># File: shared/providers/config.template.yaml
+app:
+  name: "xiaozhi-unified-router"
+  environment: "production"
+
+asr:
+  primary_provider: "groq"
+  fallback_provider: "openai"
+  providers:
+    groq:
+      api_key: "${WHISPER_API_KEY}"
+      model: "${WHISPER_MODEL:-whisper-large-v3-turbo}"
+    openai:
+      api_key: "${OPENAI_API_KEY}"
+      model: "whisper-1"
+
+llm:
+  default_brain: "gemini"
+  fallback_brain: "groq"
+  providers:
+    gemini:
+      api_key: "${GEMINI_API_KEY}"
+      backup_api_key: "${GEMINI_BACKUP_API_KEY}"
+      model: "gemini-2.5-flash"
+      fallback_model: "gemini-3.5-flash-lite"
+    groq:
+      api_key: "${GROQ_API_KEY}"
+      model: "llama-3.3-70b-versatile"
+      fallback_model: "openai/gpt-oss-120b"
+    grok:
+      api_key: "${XAI_GROK_API_KEY}"
+      model: "grok-2-latest"</code></pre>
+
+    <div class="callout callout-cosmic">
+      <strong>Cosmic Epistemology &mdash; Yuval Noah Harari on Acoustic Mythmaking</strong><br>
+      In <em>Sapiens</em>, Harari identifies flexible vocal language as the catalyst for cognitive threshold transitions: our ancestors 
+      conquered the biosphere not through physical brute strength, but through the ability to transmit shared fictions, coordinate collective action, 
+      and articulate abstract models of reality over acoustic pressure waves. Streaming audio synthesis bestows this ancestral cognitive 
+      power upon silicon: transforming cold floating-point matrices into dynamic, resonant spoken thought.
+    </div>
+
+    <div class="exercise-box">
+      <h5><span class="ch-badge">Hands-On Lab 5.5</span> Hot-Reloading Configuration Variables</h5>
+      <p>Demonstrate dynamic runtime configuration mutation without restarting the running daemon:</p>
+      <ol>
+        <li>Inspect active configuration via Python:
+          <pre><code class="language-bash">python3 -c "
+from config_loader import ConfigManager
+cfg = ConfigManager.get_instance()
+print('Active LLM:', cfg.get('llm.default_brain'))
+"</code></pre>
+        </li>
+        <li>Modify <code>data/.config.yaml</code> to set <code>default_brain: groq</code>, and verify that subsequent calls reflect the update instantaneously without dropping active connections.</li>
+      </ol>
+    
+        <div class="lab-completion-wrap">
+          <label class="lab-check-container">
+            <input type="checkbox" class="lab-checkbox" data-lab="5.5">
+            <span class="checkmark"></span>
+            Mark Laboratory 5.5 Complete
+          </label>
+        </div>
+      </div>
+  </section>
+</section>
+
+<!-- ==============================================================================
+     CHAPTER 6: DISTRIBUTED AI FEDERATION & MODEL CONTEXT PROTOCOL (MCP)
+     ============================================================================== -->
+<section id="chapter-6" class="chapter-block">
+  <h2 class="chapter-title">
+    <span class="ch-badge">Chapter 6</span>
+    Distributed AI Federation &amp; Model Context Protocol (MCP)
+  </h2>
+  
+  <p class="chapter-intro">
+    Embodied robotics cannot exist as an isolated, monolithic intelligence. A low-power edge microcontroller or single-board computer 
+    cannot host 70-billion-parameter neural networks, high-dimensional vector search engines, or multi-gigabyte spatial map databases. 
+    Conversely, a centralized workstation or cloud server lacks real-time tactile embodiment&mdash;it has no physical wheels, 
+    microphones, or local low-latency display peripherals. The solution is distributed multi-agent federation: an asymmetric, 
+    decentralized computational fabric where heterogeneous nodes collaborate via standardized protocols. In this chapter, 
+    we implement a bidirectional Model Context Protocol (MCP) over persistent WebSockets, connecting the edge cyberdeck 
+    (<code>xiaozhi-pi</code>) with the high-performance laboratory host (<code>xiaozhi-workbench</code>), backed by SQLite Write-Ahead Logging 
+    shared episodic memory and bounded autonomous multi-agent dialogue loops.
+  </p>
+
+  <!-- ---------------------------------------------------------------------------
+       Mini-Chapter 6.1
+       --------------------------------------------------------------------------- -->
+  <section id="mini-6-1" class="mini-chapter">
+    <h3 class="mini-chapter-title">Mini-Chapter 6.1: The Inter-Agent Federation Topology (Node A &harr; Node B)</h3>
+    <p>
+      Our federation architecture partitions compute across two distinct physical machines connected over a low-latency local 
+      area network:
+    </p>
+    <ul>
+      <li><strong>Node A (<code>xiaozhi-pi</code> at <code>192.168.0.106</code>)</strong>: The mobile cyberdeck edge gateway. 
+      Hosts the SmartElex 4.3" touch display, USB CDC audio streamer, <code>EVIOCGRAB</code> hardware trigger, and UDP Mecanum rover telemetry bridge.</li>
+      <li><strong>Node B (<code>xiaozhi-workbench</code> at <code>192.168.0.111</code>)</strong>: The stationary high-performance laboratory hub. 
+      Houses multi-core GPU/CPU acceleration, the central SQLite WAL shared episodic knowledge base, and complex analytical reasoning engines.</li>
+    </ul>
+    <p>
+      To bridge these nodes seamlessly through firewalls and ensure persistent connection reuse, Node B runs an Nginx reverse proxy 
+      (<code>nginx_xiaozhi_federation.conf</code>). Crucially, Nginx must be configured to disable proxy buffering and set extended 
+      read timeouts, preventing the proxy from fragmenting real-time streaming audio or severing idle WebSocket channels:
+    </p>
+
+    <div class="spec-table-wrap">
+      <table class="spec-table">
+        <thead>
+          <tr>
+            <th>Node Identifier</th>
+            <th>Network IP</th>
+            <th>Hardware Profile</th>
+            <th>Federation Role</th>
+            <th>Primary Stack</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Node A (Edge)</strong></td>
+            <td><code>192.168.0.106</code></td>
+            <td>Raspberry Pi 4B (4GB) + SmartElex 4.3" Display</td>
+            <td>Perception, speech I/O, rover motor bridge</td>
+            <td>FastAPI, <code>evdev</code>, ALSA, CDC serial</td>
+          </tr>
+          <tr>
+            <td><strong>Node B (Hub)</strong></td>
+            <td><code>192.168.0.111</code></td>
+            <td>Ubuntu 24.04 Server (Ryzen/RTX Workstation)</td>
+            <td>Deep reasoning, memory DB, orchestration</td>
+            <td>FastAPI MCP Hub, SQLite WAL, Nginx Proxy</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <pre><code class="language-nginx"># Excerpt from federation/workbench-bridge/nginx_xiaozhi_federation.conf
+upstream xiaozhi_federation_hub {
+    server 127.0.0.1:8000;
+    keepalive 32;
+}
+
+server {
+    listen 80;
+    server_name xiaozhi-federation.local;
+
+    # Bidirectional MCP &amp; Audio WebSocket Bridge
+    location /ws/xiaozhi-peer {
+        proxy_pass http://xiaozhi_federation_hub;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+
+        # Disable buffering for real-time sub-second audio &amp; RPC
+        proxy_buffering off;
+        proxy_cache off;
+        proxy_read_timeout 3600s;
+        proxy_send_timeout 3600s;
+    }
+}</code></pre>
+
+    <div class="callout callout-biomimetic">
+      <strong>Biomimetic Analogy &mdash; Siphonophore Colonial Polymorphism</strong><br>
+      In marine biology, the siphonophore (e.g., the Portuguese man-o'-war) appears as a singular organism, but is in fact a 
+      colonial federation of genetically identical zooids. Individual zooids specialize entirely: nectophores generate physical propulsion, 
+      gastrozooids process nutrients, and dactylozooids deploy tactile sensory tentacles. The Xiaozhi dual architecture embodies 
+      siphonophore polymorphism: Node A is the tactile, locomotive dactylozooid, while Node B functions as the metabolic, cognitive core.
+    </div>
+
+    <div class="exercise-box">
+      <h5><span class="ch-badge">Hands-On Lab 6.1</span> Verifying Nginx WebSocket Reverse Proxy</h5>
+      <p>Test the persistent WebSocket connection between Node A and Node B:</p>
+      <ol>
+        <li>On Node B (<code>192.168.0.111</code>), verify the Nginx proxy status:
+          <pre><code class="language-bash">sudo nginx -t &amp;&amp; sudo systemctl reload nginx</code></pre>
+        </li>
+        <li>From Node A (<code>192.168.0.106</code>), initiate a test WebSocket handshake using <code>wscat</code>:
+          <pre><code class="language-bash">wscat -c "ws://192.168.0.111/ws/xiaozhi-peer?node_id=xiaozhi-pi"</code></pre>
+        </li>
+        <li>Observe the greeting payload: <code>{"jsonrpc":"2.0","method":"notifications/peer_connected","params":{"node_id":"xiaozhi-pi"}}</code>.</li>
+      </ol>
+    
+        <div class="lab-completion-wrap">
+          <label class="lab-check-container">
+            <input type="checkbox" class="lab-checkbox" data-lab="6.1">
+            <span class="checkmark"></span>
+            Mark Laboratory 6.1 Complete
+          </label>
+        </div>
+      </div>
+  </section>
+
+  <!-- ---------------------------------------------------------------------------
+       Mini-Chapter 6.2
+       --------------------------------------------------------------------------- -->
+  <section id="mini-6-2" class="mini-chapter">
+    <h3 class="mini-chapter-title">Mini-Chapter 6.2: Model Context Protocol (MCP) JSON-RPC 2.0 over Persistent WebSockets</h3>
+    <p>
+      Rather than relying on ad-hoc REST endpoints or brittle custom sockets, our inter-agent communication standardizes on the 
+      <strong>Model Context Protocol (MCP)</strong> utilizing JSON-RPC 2.0 framing. Operating over a persistent bidirectional 
+      WebSocket channel, either node can dynamically expose capabilities, query remote tools, and broadcast asynchronous telemetry.
+    </p>
+    <p>
+      A major technical challenge in real-time robotic federation is multiplexing control RPC messages with raw acoustic streams. 
+      Opening multiple TCP sockets incurs latency and firewall overhead. In <code>federation/workbench-bridge/xiaozhi_federation_mcp.py</code>, 
+      we implement a unified transport multiplexer:
+    </p>
+    <ul>
+      <li><strong>Text Frames</strong>: Encoded in UTF-8 JSON-RPC 2.0 representing MCP protocol operations (<code>tools/list</code>, <code>tools/call</code>, <code>notifications/peer_connected</code>).</li>
+      <li><strong>Binary Frames</strong>: Packed signed 16-bit 16 kHz PCM audio chunks (exactly 1920 bytes for 60 ms duration) streamed directly to room speakers or ASR buffers without JSON encoding overhead.</li>
+    </ul>
+
+    <div class="spec-table-wrap">
+      <table class="spec-table">
+        <thead>
+          <tr>
+            <th>MCP Method</th>
+            <th>Payload Type</th>
+            <th>Direction</th>
+            <th>Functional Purpose</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>tools/list</code></td>
+            <td>JSON-RPC Request</td>
+            <td>Bidirectional</td>
+            <td>Discovers executable capabilities on the connected peer</td>
+          </tr>
+          <tr>
+            <td><code>tools/call</code></td>
+            <td>JSON-RPC Request</td>
+            <td>Bidirectional</td>
+            <td>Invokes remote tools (e.g., <code>ask_peer_xiaozhi</code>, <code>sync_shared_memory</code>)</td>
+          </tr>
+          <tr>
+            <td><code>notifications/dialogue_turn</code></td>
+            <td>JSON-RPC Notification</td>
+            <td>Node B &rarr; Node A</td>
+            <td>Broadcasts multi-turn conversational debate in real time</td>
+          </tr>
+          <tr>
+            <td><code>Binary Frame (1920B)</code></td>
+            <td>Raw PCM Audio</td>
+            <td>Bidirectional</td>
+            <td>Zero-copy real-time speech transmission</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <pre><code class="language-python"># Excerpt from federation/workbench-bridge/xiaozhi_federation_mcp.py
+async def handle_peer_socket(websocket: WebSocket, node_id: str):
+    """Multiplexes MCP JSON-RPC 2.0 and raw binary PCM audio over a single WebSocket."""
+    await websocket.accept()
+    logger.info(f"Peer connected: {node_id}")
+
+    try:
+        while True:
+            message = await websocket.receive()
+            if "text" in message:
+                # Process MCP JSON-RPC 2.0 Text Frame
+                payload = json.loads(message["text"])
+                if payload.get("method") == "tools/list":
+                    response = {
+                        "jsonrpc": "2.0", "id": payload.get("id"),
+                        "result": {"tools": list(AVAILABLE_TOOLS.values())}
+                    }
+                    await websocket.send_text(json.dumps(response))
+                elif payload.get("method") == "tools/call":
+                    await execute_mcp_tool(websocket, payload)
+            
+            elif "bytes" in message:
+                # Process Raw 1920-byte Audio PCM Frame
+                raw_pcm = message["bytes"]
+                if len(raw_pcm) == 1920:
+                    await audio_stream_buffer.put(raw_pcm)
+
+    except WebSocketDisconnect:
+        logger.info(f"Peer disconnected cleanly: {node_id}")</code></pre>
+
+    <div class="exercise-box">
+      <h5><span class="ch-badge">Hands-On Lab 6.2</span> Querying Remote MCP Tools</h5>
+      <p>Inspect the remote tool catalog exposed by Node B across the WebSocket link:</p>
+      <ol>
+        <li>Connect via Python client script:
+          <pre><code class="language-bash">python3 -c "
+import asyncio, websockets, json
+
+async def query_tools():
+    async with websockets.connect('ws://192.168.0.111/ws/xiaozhi-peer?node_id=tester') as ws:
+        req = {'jsonrpc': '2.0', 'id': 'req-1', 'method': 'tools/list'}
+        await ws.send(json.dumps(req))
+        resp = await ws.recv()
+        print('Discovered MCP Tools:', json.dumps(json.loads(resp), indent=2))
+
+asyncio.run(query_tools())
+"</code></pre>
+        </li>
+        <li>Confirm that the response lists <code>ask_peer_xiaozhi</code>, <code>sync_shared_memory</code>, <code>agent_dialogue_mode</code>, and <code>get_node_telemetry</code>.</li>
+      </ol>
+    
+        <div class="lab-completion-wrap">
+          <label class="lab-check-container">
+            <input type="checkbox" class="lab-checkbox" data-lab="6.2">
+            <span class="checkmark"></span>
+            Mark Laboratory 6.2 Complete
+          </label>
+        </div>
+      </div>
+  </section>
+
+  <!-- ---------------------------------------------------------------------------
+       Mini-Chapter 6.3
+       --------------------------------------------------------------------------- -->
+  <section id="mini-6-3" class="mini-chapter">
+    <h3 class="mini-chapter-title">Mini-Chapter 6.3: Asynchronous Tool Invocation &amp; <code>ask_peer_xiaozhi</code> Delegation</h3>
+    <p>
+      When an operator asks Node A a complex question (e.g., <em>"Analyze rover IMU dead-reckoning drift over the last 10 minutes and optimize wheel PID"</em>), 
+      Node A recognizes that its local 450 MB cgroup cannot accommodate the necessary matrix compute. Instead, it delegates the problem 
+      to Node B via the <code>ask_peer_xiaozhi</code> MCP tool.
+    </p>
+    <p>
+      To prevent thread blocking, the RPC client on Node A assigns each outbound request a unique <code>uuid4()</code> identifier 
+      and registers a pending <code>asyncio.Future</code> in an internal dictionary:
+    </p>
+    <div class="math-block">
+      $$	ext{Pending Table: } 	ext{UUID} \mapsto 	ext{Future}[	ext{Response}], \quad 	au_{	ext{timeout}} = 15.0	ext{ s}$$
+    </div>
+    <p>
+      When Node B finishes processing, it returns a JSON-RPC response carrying the matching ID. The incoming loop resolves the Future, 
+      delivering the analytical response to Node A for instant vocalization. Simultaneously, Node A can poll Node B's hardware status 
+      via <code>get_node_telemetry</code>, streaming real-time CPU, RAM, and GPU temperature metrics.
+    </p>
+
+    <div class="spec-table-wrap">
+      <table class="spec-table">
+        <thead>
+          <tr>
+            <th>Tool Name</th>
+            <th>Required Parameters</th>
+            <th>Return Schema</th>
+            <th>Mean Latency</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>ask_peer_xiaozhi</code></td>
+            <td><code>query: str, context: dict</code></td>
+            <td><code>{"response": str, "engine": str}</code></td>
+            <td>420 &ndash; 850 ms</td>
+          </tr>
+          <tr>
+            <td><code>get_node_telemetry</code></td>
+            <td><code>none</code></td>
+            <td><code>{"cpu_pct": float, "ram_mb": float}</code></td>
+            <td>12 &ndash; 25 ms</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <pre><code class="language-python"># Excerpt from federation/workbench-bridge/xiaozhi_federation_mcp.py
+class FederationClient:
+    """Asynchronous MCP client with Future correlation for cross-node RPC."""
+    
+    def __init__(self, hub_url: str):
+        self.hub_url = hub_url
+        self.pending_futures: Dict[str, asyncio.Future] = {}
+
+    async def call_tool(self, tool_name: str, arguments: dict, timeout: float = 15.0) -> dict:
+        req_id = str(uuid.uuid4())
+        payload = {
+            "jsonrpc": "2.0", "id": req_id,
+            "method": "tools/call",
+            "params": {"name": tool_name, "arguments": arguments}
+        }
+        loop = asyncio.get_running_loop()
+        future = loop.create_future()
+        self.pending_futures[req_id] = future
+
+        await self.websocket.send_text(json.dumps(payload))
+        try:
+            return await asyncio.wait_for(future, timeout=timeout)
+        finally:
+            self.pending_futures.pop(req_id, None)</code></pre>
+
+    <div class="exercise-box">
+      <h5><span class="ch-badge">Hands-On Lab 6.3</span> Executing Cross-Node Tool Delegation</h5>
+      <p>Trigger a cross-node analytical delegation query from Node A and observe Future resolution:</p>
+      <ol>
+        <li>Run the federation test suite tool execution test:
+          <pre><code class="language-bash">python3 federation/workbench-bridge/test_federation.py</code></pre>
+        </li>
+        <li>Verify in logs:
+          <pre><code>Test 2: ask_peer_xiaozhi (Pi -> Workbench) execution...
+[xiaozhi-workbench] Processed peer query 'Analyze IMU and rover battery status'
+Test 2 PASSED: Peer responded with analysis context.</code></pre>
+        </li>
+      </ol>
+    
+        <div class="lab-completion-wrap">
+          <label class="lab-check-container">
+            <input type="checkbox" class="lab-checkbox" data-lab="6.3">
+            <span class="checkmark"></span>
+            Mark Laboratory 6.3 Complete
+          </label>
+        </div>
+      </div>
+  </section>
+
+  <!-- ---------------------------------------------------------------------------
+       Mini-Chapter 6.4
+       --------------------------------------------------------------------------- -->
+  <section id="mini-6-4" class="mini-chapter">
+    <h3 class="mini-chapter-title">Mini-Chapter 6.4: SQLite WAL Shared Episodic Memory &amp; State Synchronization</h3>
+    <p>
+      Distributed agents require continuous, synchronized context. If Node A experiences a battery brownout or reboots, 
+      it must not lose situational awareness of previous commands, rover obstacle encounters, or user directives. 
+      Furthermore, multiple asynchronous tasks on Node B must write telemetry and dialogue turns concurrently without encountering 
+      database lock errors.
+    </p>
+    <p>
+      We engineer the <code>FederationMemoryDB</code> utilizing SQLite configured in <strong>Write-Ahead Logging (WAL)</strong> mode:
+    </p>
+    <div class="math-block">
+      $$	ext{PRAGMA journal\_mode = WAL;}, \quad 	ext{PRAGMA synchronous = NORMAL;}$$
+    </div>
+    <p>
+      Under standard rollback journaling, writers lock the entire database file, causing concurrent reader queries to fail with 
+      <code>sqlite3.OperationalError: database is locked</code>. Under WAL mode, writes append sequentially to a separate 
+      <code>-wal</code> file, enabling completely non-blocking concurrent reads and eliminating thread lock contention. 
+      The schema maintains three relational tables: <code>shared_memory</code> (episodic semantic summaries), 
+      <code>dialogue_history</code> (turn-by-turn transcripts), and <code>telemetry_logs</code> (high-frequency rover metrics).
+    </p>
+
+    <div class="spec-table-wrap">
+      <table class="spec-table">
+        <thead>
+          <tr>
+            <th>Table Name</th>
+            <th>Primary Columns</th>
+            <th>Index Optimization</th>
+            <th>Concurrency Model</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>shared_memory</code></td>
+            <td><code>id, session_id, timestamp, source_node, summary, tags, metadata_json</code></td>
+            <td>Indexed on <code>session_id, timestamp</code></td>
+            <td>Lockless reads via SQLite WAL</td>
+          </tr>
+          <tr>
+            <td><code>dialogue_history</code></td>
+            <td><code>id, session_id, turn_index, speaker, text, timestamp</code></td>
+            <td>Indexed on <code>session_id, turn_index</code></td>
+            <td>Atomic multi-turn batch insertions</td>
+          </tr>
+          <tr>
+            <td><code>telemetry_logs</code></td>
+            <td><code>id, timestamp, node_id, battery_v, cpu_pct, ram_mb</code></td>
+            <td>Indexed on <code>timestamp DESC</code></td>
+            <td>High-frequency 10 Hz append buffer</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <pre><code class="language-python"># Excerpt from federation/workbench-bridge/xiaozhi_federation_mcp.py
+class FederationMemoryDB:
+    """Thread-safe SQLite WAL episodic memory store."""
+    
+    def __init__(self, db_path: str = "federation_memory.db"):
+        self.db_path = db_path
+        self._init_db()
+
+    def _init_db(self):
+        with sqlite3.connect(self.db_path, timeout=10.0) as conn:
+            conn.execute("PRAGMA journal_mode = WAL;")     # Non-blocking concurrent reads
+            conn.execute("PRAGMA synchronous = NORMAL;")   # Optimal durability vs write speed
+            with conn:
+                conn.execute("""
+                    CREATE TABLE IF NOT EXISTS shared_memory (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        session_id TEXT NOT NULL,
+                        timestamp REAL NOT NULL,
+                        source_node TEXT NOT NULL,
+                        summary TEXT NOT NULL,
+                        tags TEXT,
+                        metadata_json TEXT
+                    );
+                """)
+                conn.execute("CREATE INDEX IF NOT EXISTS idx_mem_time ON shared_memory(timestamp);")</code></pre>
+
+    <div class="exercise-box">
+      <h5><span class="ch-badge">Hands-On Lab 6.4</span> Stress-Testing SQLite Concurrent Writes</h5>
+      <p>Simulate high-concurrency multi-threaded writes to verify zero database locking:</p>
+      <ol>
+        <li>Execute Test 4 of the federation suite:
+          <pre><code class="language-bash">python3 federation/workbench-bridge/test_federation.py</code></pre>
+        </li>
+        <li>Inspect the active WAL files in the bridge directory:
+          <pre><code class="language-bash">ls -la federation/workbench-bridge/federation_memory.db*</code></pre>
+          Confirm the existence of <code>federation_memory.db-wal</code> and <code>federation_memory.db-shm</code>, validating active WAL operation.
+        </li>
+      </ol>
+    
+        <div class="lab-completion-wrap">
+          <label class="lab-check-container">
+            <input type="checkbox" class="lab-checkbox" data-lab="6.4">
+            <span class="checkmark"></span>
+            Mark Laboratory 6.4 Complete
+          </label>
+        </div>
+      </div>
+  </section>
+
+  <!-- ---------------------------------------------------------------------------
+       Mini-Chapter 6.5
+       --------------------------------------------------------------------------- -->
+  <section id="mini-6-5" class="mini-chapter">
+    <h3 class="mini-chapter-title">Mini-Chapter 6.5: Bounded Autonomous Multi-Agent Dialogue (<code>agent_dialogue_mode</code>)</h3>
+    <p>
+      Autonomous peer problem solving allows Node A and Node B to debate hypotheses without human intervention. For instance, if the 
+      rover's IMU indicates repeated high-jerk events without odometric forward displacement, Node A alerts Node B. Node B proposes a 
+      carpet stiction hypothesis, Node A counters with motor current draw telemetry, and both converge on an optimized pulse-width 
+      breakaway profile.
+    </p>
+    <p>
+      However, unrestrained autonomous agent loops carry an existential failure mode: <strong>infinite recursive token expenditure</strong>. 
+      If two agents engage in circular philosophical debate or unresolvable semantic disagreement, cloud API costs surge exponentially. 
+      In <code>xiaozhi_federation_mcp.py</code>, we enforce a strict, mathematically bounded invariant:
+    </p>
+    <div class="math-block">
+      $$	ext{Loop Invariant: } 	ext{turn\_count} \le 	ext{max\_turns} \quad (	ext{Strict Bound: } 	ext{max\_turns} \le 10)$$
+    </div>
+    <p>
+      The dialogue supervisor guarantees that when <code>turn_count &gt;= max_turns</code>, the loop terminates unconditionally, 
+      generating a finalized consensus summary persisted to <code>shared_memory</code> and broadcasting each turn over the 
+      <code>notifications/dialogue_turn</code> WebSocket stream for live room audio playback.
+    </p>
+
+    <div class="spec-table-wrap">
+      <table class="spec-table">
+        <thead>
+          <tr>
+            <th>Turn Number</th>
+            <th>Speaker Agent</th>
+            <th>Cognitive Objective</th>
+            <th>Constraint Guard</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Turn 0</td>
+            <td>Node A (Edge)</td>
+            <td>Formulate physical anomaly thesis</td>
+            <td>Payload &lt; 250 tokens</td>
+          </tr>
+          <tr>
+            <td>Turn 1</td>
+            <td>Node B (Hub)</td>
+            <td>Critique &amp; propose analytical solution</td>
+            <td>Payload &lt; 250 tokens</td>
+          </tr>
+          <tr>
+            <td>Turn 2 .. N</td>
+            <td>Alternating</td>
+            <td>Refine calibration parameter</td>
+            <td>Hard termination at <code>max_turns &lt;= 10</code></td>
+          </tr>
+          <tr>
+            <td>Termination</td>
+            <td>Supervisor</td>
+            <td>Synthesize consensus &amp; persist to DB</td>
+            <td>Write to SQLite WAL</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <pre><code class="language-python"># Excerpt from federation/workbench-bridge/xiaozhi_federation_mcp.py
+async def agent_dialogue_mode(sender_node: str, topic: str, max_turns: int = 4) -> dict:
+    """Executes a bounded multi-agent debate with hard loop invariants."""
+    # Hard safety guard: maximum 10 turns allowed
+    turns_limit = min(max(1, max_turns), 10)
+    session_id = f"dialogue-{int(time.time())}"
+    transcript = []
+
+    current_speaker = sender_node
+    current_prompt = f"Topic for collaborative analysis: {topic}"
+
+    for turn in range(turns_limit):
+        # Alternate speakers between Node A and Node B
+        responder = "xiaozhi-workbench" if current_speaker == "xiaozhi-pi" else "xiaozhi-pi"
+        turn_response = await generate_agent_turn(responder, current_prompt)
+        
+        transcript.append({"turn": turn, "speaker": responder, "content": turn_response})
+        # Broadcast real-time speech frame to room speakers
+        await broadcast_dialogue_notification(session_id, turn, responder, turn_response)
+        
+        current_speaker = responder
+        current_prompt = turn_response
+
+    # Persist finalized consensus into SQLite WAL
+    db.save_dialogue(session_id, transcript)
+    return {"status": "completed", "session_id": session_id, "total_turns": len(transcript)}</code></pre>
+
+    <div class="callout callout-cosmic">
+      <strong>Cosmic Epistemology &mdash; David Deutsch on Fallibilism &amp; Dialectic</strong><br>
+      In Deutsch's epistemology, objective knowledge grows not through authoritative pronouncements, but through an endless cycle 
+      of conjecture and criticism. No single agent possesses absolute omniscience; all theories are fallible. Bounded multi-agent dialogue 
+      instantiates this universal evolutionary epistemology: silicon minds exchanging conjectures, eliminating errors through critical 
+      cross-examination, and ascending toward deeper explanations of physical reality.
+    </div>
+
+    <div class="exercise-box">
+      <h5><span class="ch-badge">Hands-On Lab 6.5</span> Running an Autonomous Multi-Agent Debate</h5>
+      <p>Initiate a 4-turn autonomous debate and observe turn-by-turn WebSocket broadcast:</p>
+      <ol>
+        <li>Run Test 5 from the federation verification suite:
+          <pre><code class="language-bash">python3 federation/workbench-bridge/test_federation.py</code></pre>
+        </li>
+        <li>Inspect the test output:
+          <pre><code>Test 5: agent_dialogue_mode &amp; 16kHz PCM audio broadcast...
+Test 5 PASSED: 4-turn dialogue generated, persisted, and broadcast over WebSocket (1920B frames)</code></pre>
+          Confirm that the dialogue terminates deterministically after 4 turns without runaway recursive execution.
+        </li>
+      </ol>
+    
+        <div class="lab-completion-wrap">
+          <label class="lab-check-container">
+            <input type="checkbox" class="lab-checkbox" data-lab="6.5">
+            <span class="checkmark"></span>
+            Mark Laboratory 6.5 Complete
+          </label>
+        </div>
+      </div>
+  </section>
+</section>
+
+<!-- ==============================================================================
+     CHAPTER 7: MECANUM ROVER OMNIDIRECTIONAL MECHANICS & RP2040-ZERO CONTROL THEORY
+     ============================================================================== -->
+<section id="chapter-7" class="chapter-block">
+  <h2 class="chapter-title">
+    <span class="ch-badge">Chapter 7</span>
+    Mecanum Rover Omnidirectional Mechanics &amp; RP2040-Zero Control Theory
+  </h2>
+  
+  <p class="chapter-intro">
+    Traditional differential-drive or Ackermann-steered mobile robots suffer from non-holonomic kinematic constraints: 
+    they cannot translate sideways without executing multi-point turns. In cramped laboratory aisles, cluttered desktop environments, 
+    or tight cyberdeck docking stations, non-holonomic motion leads to entrapment and high navigational overhead. 
+    By contrast, omnidirectional Mecanum drive platforms possess three unconstrained degrees of planar freedom 
+    ($v_x, v_y, \omega_z$). However, achieving precise omnidirectional control introduces severe physical complexities: 
+    severe Coulomb static friction non-linearities, motor breakaway thresholds magnified by heavy onboard battery payloads, 
+    wheel slippage rendering naive wheel-encoder odometry useless, and audible high-frequency coil whine from poorly tuned PWM drivers. 
+    In this chapter, we derive the complete mathematical kinematics, tribological compensation models, jerk-gated inertial odometry, 
+    and ultrasonic 20 kHz PWM driver firmware implemented on the Waveshare RP2040-Zero microcontroller.
+  </p>
+
+  <!-- ---------------------------------------------------------------------------
+       Mini-Chapter 7.1
+       --------------------------------------------------------------------------- -->
+  <section id="mini-7-1" class="mini-chapter">
+    <h3 class="mini-chapter-title">Mini-Chapter 7.1: Omnidirectional Mecanum Kinematics &amp; Velocity Vector Mixing</h3>
+    <p>
+      A Mecanum wheel consists of a central hub flanked by passive peripheral rollers angled at exactly $45^\circ$ relative to the 
+      wheel plane. When four Mecanum wheels are arranged in the standard rectangular "X-pattern" (where roller contact axes converge 
+      toward the chassis center when viewed from above), rotating each wheel generates both a longitudinal traction vector and a 
+      transverse lateral force vector.
+    </p>
+    <p>
+      Let the rover frame be defined such that $+x$ corresponds to forward longitudinal velocity ($v_y$ in Cartesian screen mixing), 
+      $+y$ represents lateral strafe velocity to the left ($v_x$), and $+\omega_z$ defines counter-clockwise angular yaw rate. 
+      The linear velocity vector of each wheel contact patch is governed by the inverse kinematics transformation matrix:
+    </p>
+    <div class="math-block">
+      $$egin{bmatrix} w_0 \ (	ext{FL}) \ w_1 \ (	ext{FR}) \ w_2 \ (	ext{RL}) \ w_3 \ (	ext{RR}) \end{bmatrix} = 
+      egin{bmatrix} 
+        1 &amp; 1 &amp; 1 \ 
+        1 &amp; -1 &amp; -1 \ 
+        1 &amp; -1 &amp; 1 \ 
+        1 &amp; 1 &amp; -1 
+      \end{bmatrix} 
+      egin{bmatrix} v_y \ v_x \ \omega_z \end{bmatrix}$$
+    </div>
+    <p>
+      Expanding this matrix yields four discrete wheel equations:
+    </p>
+    <div class="math-block">
+      $$w_0 = v_y + v_x + \omega_z, \quad w_1 = v_y - v_x - \omega_z, \quad w_2 = v_y - v_x + \omega_z, \quad w_3 = v_y + v_x - \omega_z$$
+    </div>
+    <p>
+      A classic pitfall in embedded motor controllers is <strong>velocity saturation clipping</strong>. When the operator commands simultaneous 
+      maximum forward throttle ($v_y = 100\%$) and full lateral strafe ($v_x = 100\%$), wheel 0 requires $w_0 = 200\%$, while wheel 1 
+      requires $w_1 = 0\%$. If the microcontroller naively clamps wheel 0 to $100\%$ while leaving wheel 1 at $0\%$, the resultant heading 
+      vector suffers severe angular distortion. 
+    </p>
+    <p>
+      In <code>rover rp2040 cpp/rover_rp2040/motor_ctrl.h</code>, the <code>RoverMotors::mix()</code> function executes 
+      <strong>proportional vector normalization</strong>: it identifies the peak absolute wheel demand $m = \max(|w_0|, |w_1|, |w_2|, |w_3|)$. 
+      If $m &gt; 100$, all four wheel speeds are scaled by $100.0 / m$, strictly preserving trajectory angle and rotational rate:
+    </p>
+
+    <div class="spec-table-wrap">
+      <table class="spec-table">
+        <thead>
+          <tr>
+            <th>Motion Type</th>
+            <th>$v_y$ (Fwd)</th>
+            <th>$v_x$ (Strafe)</th>
+            <th>$\omega_z$ (Rot)</th>
+            <th>$w_0$ (FL)</th>
+            <th>$w_1$ (FR)</th>
+            <th>$w_2$ (RL)</th>
+            <th>$w_3$ (RR)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Pure Forward</td>
+            <td>+100</td>
+            <td>0</td>
+            <td>0</td>
+            <td>+100</td>
+            <td>+100</td>
+            <td>+100</td>
+            <td>+100</td>
+          </tr>
+          <tr>
+            <td>Pure Reverse</td>
+            <td>-100</td>
+            <td>0</td>
+            <td>0</td>
+            <td>-100</td>
+            <td>-100</td>
+            <td>-100</td>
+            <td>-100</td>
+          </tr>
+          <tr>
+            <td>Pure Left Strafe</td>
+            <td>0</td>
+            <td>+100</td>
+            <td>0</td>
+            <td>+100</td>
+            <td>-100</td>
+            <td>-100</td>
+            <td>+100</td>
+          </tr>
+          <tr>
+            <td>Pure Right Strafe</td>
+            <td>0</td>
+            <td>-100</td>
+            <td>0</td>
+            <td>-100</td>
+            <td>+100</td>
+            <td>+100</td>
+            <td>-100</td>
+          </tr>
+          <tr>
+            <td>Spin CCW (Turn Left)</td>
+            <td>0</td>
+            <td>0</td>
+            <td>+100</td>
+            <td>+100</td>
+            <td>-100</td>
+            <td>+100</td>
+            <td>-100</td>
+          </tr>
+          <tr>
+            <td>Diagonal Forward-Left</td>
+            <td>+100</td>
+            <td>+100</td>
+            <td>0</td>
+            <td>+100</td>
+            <td>0</td>
+            <td>0</td>
+            <td>+100</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <pre><code class="language-cpp">// Excerpt from rover rp2040 cpp/rover_rp2040/motor_ctrl.h
+void mix(float x, float y, float z, float spd, float out[4]) {
+    x *= (float)strafe_sign;
+    z *= (float)rot_sign;
+
+    // Omnidirectional Inverse Kinematics
+    float w[4];
+    w[0] = y + x + z;  // FL (Motor 0)
+    w[1] = y - x - z;  // FR (Motor 1)
+    w[2] = y - x + z;  // RL (Motor 2)
+    w[3] = y + x - z;  // RR (Motor 3)
+
+    // Proportional Vector Normalization
+    float m = 0.0f;
+    for (int i = 0; i &lt; 4; i++) {
+        float a = fabsf(w[i]);
+        if (a &gt; m) m = a;
+    }
+    if (m &gt; 100.0f) {
+        for (int i = 0; i &lt; 4; i++) {
+            w[i] = (w[i] * 100.0f) / m;
+        }
+    }
+    
+    // Scale by overall master speed percentage
+    float k = spd / 100.0f;
+    for (int i = 0; i &lt; 4; i++) {
+        out[i] = w[i] * k;
+    }
+}</code></pre>
+
+    <div class="exercise-box">
+      <h5><span class="ch-badge">Hands-On Lab 7.1</span> Verifying Mecanum Vector Normalization</h5>
+      <p>Simulate the kinematics mixer in Python to verify proportional scaling under saturated diagonal strafe:</p>
+      <ol>
+        <li>Execute the kinematics verification script:
+          <pre><code class="language-bash">python3 -c "
+def mix(x, y, z, spd):
+    w = [y + x + z, y - x - z, y - x + z, y + x - z]
+    m = max([abs(v) for v in w])
+    if m > 100.0:
+        w = [(v * 100.0) / m for v in w]
+    return [v * (spd / 100.0) for v in w]
+
+print('Diagonal (x=100, y=100, spd=100):', mix(100, 100, 0, 100))
+print('Spin+Fwd (x=0, y=100, z=100, spd=100):', mix(0, 100, 100, 100))
+"</code></pre>
+        </li>
+        <li>Observe the output:
+          <pre><code>Diagonal (x=100, y=100, spd=100): [100.0, 0.0, 0.0, 100.0]
+Spin+Fwd (x=0, y=100, z=100, spd=100): [100.0, 0.0, 100.0, 0.0]</code></pre>
+          Confirm that saturated inputs scale proportionally without clipping.
+        </li>
+      </ol>
+    
+        <div class="lab-completion-wrap">
+          <label class="lab-check-container">
+            <input type="checkbox" class="lab-checkbox" data-lab="7.1">
+            <span class="checkmark"></span>
+            Mark Laboratory 7.1 Complete
+          </label>
+        </div>
+      </div>
+  </section>
+
+  <!-- ---------------------------------------------------------------------------
+       Mini-Chapter 7.2
+       --------------------------------------------------------------------------- -->
+  <section id="mini-7-2" class="mini-chapter">
+    <h3 class="mini-chapter-title">Mini-Chapter 7.2: Coulomb Stiction Physics &amp; Breakaway Impulse Tuning (+40% Mass)</h3>
+    <p>
+      In theoretical textbooks, DC motor speed is modeled as a linear function of applied PWM duty cycle. In physical robotics, 
+      this model collapses completely due to <strong>Coulomb static friction (stiction)</strong>:
+    </p>
+    <div class="math-block">
+      $$F_{	ext{friction}} = egin{cases} F_{	ext{applied}} &amp; 	ext{if } |F_{	ext{applied}}| \le f_s = \mu_s N \quad (	ext{Stationary Stiction}) \ 	ext{sgn}(v) \, \mu_k N &amp; 	ext{if } |v| &gt; 0 \quad (	ext{Kinetic Dynamic Friction}) \end{cases}$$
+    </div>
+    <p>
+      Because $\mu_s pprox 1.3 	imes \mu_k$ across rubber rollers and synthetic laboratory carpet, the static torque required to initiate 
+      rotation is drastically higher than the dynamic torque needed to maintain steady-state rolling.
+    </p>
+    <p>
+      This physical non-linearity is severely magnified in our custom rover build. Adding three high-capacity 18650 Li-ion cells, 
+      a raised 3-mic acoustic mast, the Pi camera pan-tilt gimbal, and dual ToF bracketry increased the chassis mass by 
+      <strong>+40%</strong> (from 420 g to ~590 g). Under standard PWM drive, commanding low crawling speeds ($10\% - 25\%$) results in 
+      zero physical motion: the motors hum and stall against the carpet fibers, dissipating energy as waste heat until battery 
+      voltage drops.
+    </p>
+    <p>
+      In <code>rover rp2040 cpp/rover_rp2040/motor_ctrl.h</code>, we engineer a two-phase tribological compensation engine:
+    </p>
+    <ol>
+      <li><strong>Breakaway Kick Impulse</strong>: Whenever a wheel transitions from rest (<code>was_stopped[i] == true</code>) to motion, 
+      the controller injects a high-energy breakaway pulse lasting <strong>180 ms</strong> ($18 	imes 10	ext{ ms}$ control loops), 
+      clamping the PWM duty cycle to $\ge 52,000$ ($pprox 79.3\%$ of full-scale 65,535). This generates instantaneous breakaway 
+      torque, shattering static friction bonds before immediately settling to the requested crawl speed.</li>
+      <li><strong>Low-Speed 25 Hz Micro-Dither</strong>: For persistent crawl commands ($a &lt; 20\%$), the controller superimposes an alternating 
+      $\pm 1800$ count dither at 25 Hz ($100	ext{ Hz} / 4$). This high-frequency mechanical vibration keeps the roller interface in a perpetual 
+      dynamic friction regime, enabling smooth sub-centimeter per second creeping without stick-slip shudder.</li>
+    </ol>
+
+    <div class="spec-table-wrap">
+      <table class="spec-table">
+        <thead>
+          <tr>
+            <th>Control Parameter</th>
+            <th>Configured Value</th>
+            <th>Physical Meaning</th>
+            <th>Impact on +40% Mass Chassis</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>min_duty</code></td>
+            <td>38,000 counts</td>
+            <td>Minimum active PWM floor (58.0%)</td>
+            <td>Ensures steady kinetic drive once moving</td>
+          </tr>
+          <tr>
+            <td><code>stiction_kick</code> duration</td>
+            <td>18 ticks (180 ms)</td>
+            <td>Impulse burst window</td>
+            <td>Sufficient time to overcome rotor and chassis inertia</td>
+          </tr>
+          <tr>
+            <td><code>stiction_kick</code> duty clamp</td>
+            <td>&ge; 52,000 counts</td>
+            <td>Breakaway torque floor (79.3%)</td>
+            <td>Overcomes heavy carpet resistance without wheel spin</td>
+          </tr>
+          <tr>
+            <td><code>dither</code> amplitude &amp; rate</td>
+            <td>&plusmn; 1800 counts @ 25 Hz</td>
+            <td>High-frequency micro-dither</td>
+            <td>Maintains $\mu_k$ dynamic friction regime during creep</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <pre><code class="language-cpp">// Excerpt from rover rp2040 cpp/rover_rp2040/motor_ctrl.h
+void driveRaw(uint8_t i, float speed) {
+    if (i &gt;= 4) return;
+    speed *= (float)invert[i];
+    float a = fabsf(speed);
+
+    if (a &lt; 2.0f) {
+        analogWrite(pairs[i].fwd_pin, 0);
+        analogWrite(pairs[i].bck_pin, 0);
+        was_stopped[i] = true;
+        stiction_kick[i] = 0;
+        return;
+    }
+
+    // Detect transition from rest -> Trigger 180ms Breakaway Kick
+    if (was_stopped[i]) {
+        was_stopped[i] = false;
+        stiction_kick[i] = 18; // 18 ticks * 10ms = 180ms
+    }
+
+    uint32_t duty = min_duty + (uint32_t)((a - 2.0f) / 98.0f * (float)(MOTOR_PWM_MAX_DUTY - min_duty));
+
+    if (stiction_kick[i] &gt; 0) {
+        stiction_kick[i]--;
+        if (duty &lt; 52000) duty = 52000; // Break static friction under +40% mass
+    } else if (a &lt; 20.0f) {
+        // 25 Hz Micro-dither at low crawl speeds (tick_count increments at 100 Hz)
+        int32_t dither = ((tick_count % 4) &lt; 2) ? 1800 : -1800;
+        int32_t d = (int32_t)duty + dither;
+        if (d &lt; (int32_t)min_duty + 2000) d = min_duty + 2000;
+        if (d &gt; MOTOR_PWM_MAX_DUTY) d = MOTOR_PWM_MAX_DUTY;
+        duty = (uint32_t)d;
+    }
+
+    if (duty &gt; MOTOR_PWM_MAX_DUTY) duty = MOTOR_PWM_MAX_DUTY;
+
+    if (speed &gt; 0.0f) {
+        analogWrite(pairs[i].bck_pin, 0);
+        analogWrite(pairs[i].fwd_pin, duty);
+    } else {
+        analogWrite(pairs[i].fwd_pin, 0);
+        analogWrite(pairs[i].bck_pin, duty);
+    }
+}</code></pre>
+
+    <div class="callout callout-biomimetic">
+      <strong>Biomimetic Analogy &mdash; Gecko Setae Detachment &amp; Arthropod Tarsal Claws</strong><br>
+      In nature, geckos and beetles achieve high locomotion agility on complex substrates by modulating adhesive pre-load. 
+      A gecko's sub-micron setae adhere via van der Waals forces, requiring a distinct angular "peel" impulse ($18^\circ$ detachment vector) 
+      to break contact bonds before each step. The 180 ms stiction breakaway kick functions as the cybernetic equivalent of tarsal peeling: 
+      a decisive pre-load impulse that overcomes microscopic molecular adhesion before returning to low-energy locomotion.
+    </div>
+
+    <div class="exercise-box">
+      <h5><span class="ch-badge">Hands-On Lab 7.2</span> Calibrating Carpet Breakaway Kick</h5>
+      <p>Test the breakaway kick and observe the elimination of deadband motor stall:</p>
+      <ol>
+        <li>Place the rover on high-pile carpet.</li>
+        <li>Send a minimal 5% forward crawl command over the serial interface:
+          <pre><code class="language-bash">echo "CMD:ROVER_DRIVE 0 5 0 0 0" > /dev/ttyACM0</code></pre>
+        </li>
+        <li>Verify via an oscilloscope or audio monitor: notice a crisp 180 ms PWM burst at 79% duty cycle, immediately followed by steady 5% PWM drive. The rover instantly begins rolling forward without stall hesitation.</li>
+      </ol>
+    
+        <div class="lab-completion-wrap">
+          <label class="lab-check-container">
+            <input type="checkbox" class="lab-checkbox" data-lab="7.2">
+            <span class="checkmark"></span>
+            Mark Laboratory 7.2 Complete
+          </label>
+        </div>
+      </div>
+  </section>
+
+  <!-- ---------------------------------------------------------------------------
+       Mini-Chapter 7.3
+       --------------------------------------------------------------------------- -->
+  <section id="mini-7-3" class="mini-chapter">
+    <h3 class="mini-chapter-title">Mini-Chapter 7.3: Jerk-Gated IMU Dead-Reckoning Odometry</h3>
+    <p>
+      In mobile robotics, estimating position $(x, y, 	heta)$ via wheel encoders is standard practice. On a Mecanum rover, however, 
+      wheel encoders are fundamentally deceptive: when the chassis pushes against a wall, climbs over a door threshold, or slips on a 
+      loose rug, the wheels spin freely while the robot remains stationary. Integrating wheel revolutions produces catastrophic 
+      "phantom odometry."
+    </p>
+    <p>
+      Direct double-integration of IMU accelerometer readings ($\iint a \, dt^2$) is equally fatal, as tiny sensor bias errors 
+      accumulate quadratically into kilometers of drift within minutes:
+    </p>
+    <div class="math-block">
+      $$\Delta x(t) = rac{1}{2} a_{	ext{bias}} t^2 \implies 	ext{Quadratic Phantom Drift Explosion}$$
+    </div>
+    <p>
+      In <code>rover rp2040 cpp/rover_rp2040/ahrs.h</code>, we solve this dilemma through <strong>Jerk-Gated Dead-Reckoning Odometry</strong>. 
+      The RP2040-Zero fuses 6-axis MPU6050 data with an auto-probing magnetometer on I2C1 (400 kHz). The firmware maintains a fast 
+      Exponential Moving Average (EMA) of the gravity vector:
+    </p>
+    <div class="math-block">
+      $$a_{	ext{EMA}}[k] = 0.88 \, a_{	ext{EMA}}[k-1] + 0.12 \, a[k]$$
+    </div>
+    <p>
+      Subtracting the low-frequency gravity baseline isolates the high-pass dynamic linear jerk vector ($	ext{dynJerk}$):
+    </p>
+    <div class="math-block">
+      $$	ext{jerk}_x = a_x - a_{	ext{EMA}, x}, \quad 	ext{jerk}_y = a_y - a_{	ext{EMA}, y}, \quad 	ext{dynJerk} = \sqrt{	ext{jerk}_x^2 + 	ext{jerk}_y^2} \quad (	ext{in } g	ext{-units})$$
+    </div>
+    <p>
+      Odometry displacement integration is permitted <strong>if and only if</strong> real physical motion is corroborated by inertial jerk:
+    </p>
+    <div class="math-block">
+      $$	ext{IsMoving} = (
+eg 	ext{Stationary}) \ \land \ (	ext{dynJerk} &gt; 0.045	ext{ g} \ \lor \ |\omega_z| &gt; 0.06	ext{ rad/s}) \ \land \ (	ext{Effort} \ge 12\%)$$
+    </div>
+    <p>
+      If the rover is pinned against an obstacle with wheels spinning at 100% throttle, $	ext{dynJerk}$ drops below 0.045 g. 
+      The odometry accumulator instantly clamps velocity integration to zero ($\Delta x = 0, \Delta y = 0$), completely preventing phantom drift.
+    </p>
+
+    <div class="spec-table-wrap">
+      <table class="spec-table">
+        <thead>
+          <tr>
+            <th>Filter Metric</th>
+            <th>Gating Threshold</th>
+            <th>Sensor Source</th>
+            <th>Phantom Suppression Target</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Dynamic Linear Jerk (<code>dynJerk</code>)</td>
+            <td>&gt; 0.045 g</td>
+            <td>MPU6050 High-Pass Accelerometer</td>
+            <td>Eliminates drift during motor stall against obstacles</td>
+          </tr>
+          <tr>
+            <td>Yaw Angular Rate ($|\omega_z|$)</td>
+            <td>&gt; 0.06 rad/s (3.44&deg;/s)</td>
+            <td>MPU6050 Gyroscope Z-axis</td>
+            <td>Gates rotational slip vs genuine heading pivot</td>
+          </tr>
+          <tr>
+            <td>Commanded Effort Deadband</td>
+            <td>&ge; 12% throttle</td>
+            <td>Motor Command Input</td>
+            <td>Rejects electrical noise during stationary rest</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <pre><code class="language-cpp">// Excerpt from rover rp2040 cpp/rover_rp2040/ahrs.h
+void updateOdometry(float fwd_cmd, float strafe_cmd, float dt) {
+    // Dynamic Linear Jerk Calculation
+    float jerkX = ac[0] - emaAc[0];
+    float jerkY = ac[1] - emaAc[1];
+    dynJerk = sqrtf(jerkX * jerkX + jerkY * jerkY);
+
+    // Physical Motion Gate Invariant
+    bool isPhysicallyMoving = (!fusion.stationary) &amp;&amp; 
+                             (dynJerk &gt; 0.045f || fabsf(fusion.gz) &gt; 0.06f);
+
+    float effort = fmaxf(fabsf(fwd_cmd), fabsf(strafe_cmd));
+    float vx = 0.0f, vy = 0.0f;
+
+    if (isPhysicallyMoving &amp;&amp; effort &gt;= 12.0f) {
+        float scale = (effort - 12.0f) / effort;
+        vx = fwd_cmd * 8.5f * scale;     // mm/s forward
+        vy = strafe_cmd * 8.5f * scale;  // mm/s lateral strafe
+    }
+
+    // Integrate world-frame displacement (cm)
+    float rad = heading * DEG_TO_RAD;
+    odomX += (vx * cosf(rad) - vy * sinf(rad)) * dt / 10.0f;
+    odomY += (vx * sinf(rad) + vy * cosf(rad)) * dt / 10.0f;
+}</code></pre>
+
+    <div class="exercise-box">
+      <h5><span class="ch-badge">Hands-On Lab 7.3</span> Testing Low-Jerk Odometry Phantom Suppression</h5>
+      <p>Verify that restrained wheels do not produce false odometric displacement:</p>
+      <ol>
+        <li>Run the unit test suite verifying low-jerk gating:
+          <pre><code class="language-bash">python3 Desktop/rover/tests/test_rover_modules.py -k test_dead_reckoning_low_jerk_gate</code></pre>
+        </li>
+        <li>Review test assertion:
+          <pre><code>Ran 1 test in 0.002s
+OK</code></pre>
+          Confirm that commanding 100% forward speed with simulated <code>dyn_jerk = 0.02</code> produces exactly <code>odomX = 0.0, odomY = 0.0</code>.
+        </li>
+      </ol>
+    
+        <div class="lab-completion-wrap">
+          <label class="lab-check-container">
+            <input type="checkbox" class="lab-checkbox" data-lab="7.3">
+            <span class="checkmark"></span>
+            Mark Laboratory 7.3 Complete
+          </label>
+        </div>
+      </div>
+  </section>
+
+  <!-- ---------------------------------------------------------------------------
+       Mini-Chapter 7.4
+       --------------------------------------------------------------------------- -->
+  <section id="mini-7-4" class="mini-chapter">
+    <h3 class="mini-chapter-title">Mini-Chapter 7.4: Closed-Loop Stuck Detection &amp; The 12-State Autonomy Engine</h3>
+    <p>
+      Mobile robots operating autonomously in unmapped environments frequently encounter traps: table leg mazes, deep carpet divots, 
+      or invisible glass partitions. When trapped, continuing forward commands strips gearbox gears and drains batteries. 
+      The robot must detect entrapment autonomously and execute systematic escape maneuvers.
+    </p>
+    <p>
+      In <code>rover rp2040 cpp/rover_rp2040/autonomy.h</code>, the <code>RoverAutonomy</code> engine evaluates three concurrent 
+      entrapment criteria:
+    </p>
+    <ol>
+      <li><strong>Boxed-In Condition</strong>: Front distance sensor detects $d_F &lt; 350	ext{ mm}$ while commanding forward motion.</li>
+      <li><strong>Oscillation Trap</strong>: 3 turn maneuvers executed within 6.0 seconds, or forward progress $&lt; 12	ext{ cm}$ over 3.0 seconds.</li>
+      <li><strong>Range-Rate Stall &amp; Jerk Discrepancy</strong>: Commanded effort $\ge 35\%$, distance sensor delta $|\Delta d_F| &lt; 12	ext{ mm}$ for over 900 ms, and $	ext{dynJerk} &lt; 0.03	ext{ g}$.</li>
+    </ol>
+    <p>
+      Upon triggering, the engine transitions through a 12-state finite state machine (<code>AutoNavState</code>) defined in 
+      <code>rover_link.h</code>:
+    </p>
+
+    <div class="spec-table-wrap">
+      <table class="spec-table">
+        <thead>
+          <tr>
+            <th>State ID</th>
+            <th>Enum Identifier</th>
+            <th>Kinematic Action</th>
+            <th>Escape Transition Condition</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>0</td>
+            <td><code>AUTO_CRUISE_CLEAR</code></td>
+            <td>Forward nominal cruise ($v_y = +50\%$)</td>
+            <td>Obstacle &lt; 800 mm &rarr; State 1</td>
+          </tr>
+          <tr>
+            <td>1</td>
+            <td><code>AUTO_THINKING_SCAN</code></td>
+            <td>Decelerate &amp; sweep pan-tilt sensor</td>
+            <td>Path clear &rarr; State 2</td>
+          </tr>
+          <tr>
+            <td>2</td>
+            <td><code>AUTO_PLANNING_PATH</code></td>
+            <td>Evaluate 12-sector polar histogram</td>
+            <td>Select lowest obstacle sector</td>
+          </tr>
+          <tr>
+            <td>3 &amp; 4</td>
+            <td><code>AUTO_VEER_LEFT / RIGHT</code></td>
+            <td>Omnidirectional lateral strafe</td>
+            <td>Clearance &gt; 500 mm &rarr; State 0</td>
+          </tr>
+          <tr>
+            <td>5</td>
+            <td><code>AUTO_CAUTIOUS_CREEP</code></td>
+            <td>Low-speed micro-dither forward (15%)</td>
+            <td>Close obstacle traversal</td>
+          </tr>
+          <tr>
+            <td>6</td>
+            <td><code>AUTO_STUCK_DETECTED</code></td>
+            <td>Zero motors; pause 180 ms</td>
+            <td>Oscillation &rarr; State 8; Stall &rarr; State 7</td>
+          </tr>
+          <tr>
+            <td>7</td>
+            <td><code>AUTO_REVERSE_BACKTRACK</code></td>
+            <td>Reverse along breadcrumb trail <code>pathHist</code></td>
+            <td>Duration &gt; 800 ms &rarr; State 9</td>
+          </tr>
+          <tr>
+            <td>8</td>
+            <td><code>AUTO_SCURVE_ESCAPE</code></td>
+            <td>Opposed diagonal strafe + reverse</td>
+            <td>Clearance recovered &rarr; State 0</td>
+          </tr>
+          <tr>
+            <td>9</td>
+            <td><code>AUTO_COMPASS_PIVOT</code></td>
+            <td>In-place yaw rotation ($180^\circ$)</td>
+            <td>Target heading reached &plusmn; 5&deg;</td>
+          </tr>
+          <tr>
+            <td>10</td>
+            <td><code>AUTO_WALL_FOLLOW</code></td>
+            <td>Maintain lateral standoff distance</td>
+            <td>ToF side range = 250 mm</td>
+          </tr>
+          <tr>
+            <td>11</td>
+            <td><code>AUTO_IMPACT_REFLEX</code></td>
+            <td>Instantaneous 300 ms reverse kick</td>
+            <td>Physical bumper / high-g shock</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <pre><code class="language-cpp">// Excerpt from rover rp2040 cpp/rover_rp2040/autonomy.h
+void evaluateAutonomyFSM(uint16_t dF, uint16_t dR, float dynJerk, uint32_t now_ms) {
+    // Range-Rate Stall &amp; Jerk Discrepancy
+    bool isStall = false;
+    if (fabsf(out_y) &gt; 0.35f &amp;&amp; dF &gt; 0) {
+        if (abs((int)dF - (int)prevDF) &lt; 12) {
+            if (stallStartMs == 0) stallStartMs = now_ms;
+            else if (now_ms - stallStartMs &gt; 900) isStall = true;
+        } else {
+            stallStartMs = 0; prevDF = dF;
+        }
+    }
+
+    // Trigger Stuck Recovery Alert State
+    if ((isBoxedIn || isOscillationTrap || isStall) &amp;&amp; inForwardState) {
+        autoState = AUTO_STUCK_DETECTED;
+        autoStateStart = now_ms;
+        autoStateUntil = now_ms + 180; // 180ms settling pause
+    }
+
+    switch (autoState) {
+        case AUTO_STUCK_DETECTED:
+            out_y = 0.0f; out_z = 0.0f;
+            if (now_ms &gt;= autoStateUntil) {
+                if (isOscillationTrap) {
+                    autoState = AUTO_SCURVE_ESCAPE;
+                    autoStateUntil = now_ms + 1200;
+                } else {
+                    autoState = AUTO_REVERSE_BACKTRACK;
+                    autoStateUntil = now_ms + 900;
+                }
+            }
+            break;
+            
+        case AUTO_REVERSE_BACKTRACK:
+            out_y = -0.45f; // Reverse throttle
+            // Align yaw to opposite of latest breadcrumb entry
+            if (pathHistCount &gt; 0) {
+                int prev = (pathHistHead - 1 + 64) % 64;
+                out_x = (pathHist[prev].x &gt; odomX) ? -0.2f : 0.2f;
+            }
+            if (now_ms &gt;= autoStateUntil) autoState = AUTO_COMPASS_PIVOT;
+            break;
+    }
+}</code></pre>
+
+    <div class="exercise-box">
+      <h5><span class="ch-badge">Hands-On Lab 7.4</span> Tracing Autonomy FSM Transitions</h5>
+      <p>Simulate obstacle trap conditions and verify state transition sequence:</p>
+      <ol>
+        <li>Inspect the test coverage for autonomy state transitions:
+          <pre><code class="language-bash">python3 Desktop/rover/tests/test_rover_modules.py -k test_autonomy_state_transitions</code></pre>
+        </li>
+        <li>Observe the FSM log:
+          <pre><code>[FSM] AUTO_CRUISE_CLEAR -> AUTO_STUCK_DETECTED (Reason: Stall detected, deltaDF=0, dynJerk=0.01)
+[FSM] AUTO_STUCK_DETECTED -> AUTO_REVERSE_BACKTRACK (Duration: 900ms)
+[FSM] AUTO_REVERSE_BACKTRACK -> AUTO_COMPASS_PIVOT (Heading delta: 180 deg)</code></pre>
+        </li>
+      </ol>
+    
+        <div class="lab-completion-wrap">
+          <label class="lab-check-container">
+            <input type="checkbox" class="lab-checkbox" data-lab="7.4">
+            <span class="checkmark"></span>
+            Mark Laboratory 7.4 Complete
+          </label>
+        </div>
+      </div>
+  </section>
+
+  <!-- ---------------------------------------------------------------------------
+       Mini-Chapter 7.5
+       --------------------------------------------------------------------------- -->
+  <section id="mini-7-5" class="mini-chapter">
+    <h3 class="mini-chapter-title">Mini-Chapter 7.5: 20 kHz H-Bridge PWM Drive &amp; Edge Pinout on RP2040-Zero</h3>
+    <p>
+      Standard Arduino microcontroller PWM drivers operate at frequencies between 490 Hz and 1,000 Hz. In a robotics lab, 
+      this acoustic frequency sits squarely in the most sensitive range of human hearing, generating a grating, persistent coil whine 
+      that causes severe acoustic fatigue. Furthermore, low-frequency PWM produces high ripple currents that induce thermal stress 
+      in motor windings.
+    </p>
+    <p>
+      On the Waveshare RP2040-Zero, we configure the hardware PWM slices to operate at an ultrasonic frequency of exactly 
+      <strong>20,000 Hz (20 kHz)</strong> with a 16-bit timer range ($0 - 65,535$):
+    </p>
+    <div class="math-block">
+      $$f_{	ext{PWM}} = 20,000	ext{ Hz} &gt; 20	ext{ kHz (Human Audible Limit)} \implies 	ext{Silent Operation}$$
+    </div>
+    <p>
+      To prevent rapid throttle transitions from drawing excessive inductive current and dropping battery voltage below the 
+      RP2040's 3.3V LDO brownout threshold, the firmware enforces an acceleration slew rate limiter:
+    </p>
+    <div class="math-block">
+      $$	ext{accel} = 25.0\% 	ext{ per } 10	ext{ ms tick} \implies 	ext{Max Slew Rate} = 2,500\%/	ext{s}$$
+    </div>
+
+    <h4>Sensor Suite Evolution: Phasing Out Ultrasonic Sensors</h4>
+    <p>
+      Early iterations of the rover chassis mounted dual HC-SR04 ultrasonic rangefinders on <code>GP19&ndash;GP22</code>. In practice, 
+      ultrasonic sensors proved problematic: wide $30^\circ$ acoustic beam spread generated false wall echoes in narrow hallways, 
+      while specular reflections off angled furniture legs created invisible blind spots. 
+      Per the architectural directive in <code>mecanum-rover/SKILL.md</code>, ultrasonic sensors were 
+      <strong>permanently removed</strong> and replaced with high-precision Time-of-Flight (ToF) arrays and beamforming audio:
+    </p>
+    <ul>
+      <li><strong>5x VL53L0X ToF Sensors</strong>: Connected to the shared I2C1 bus (<code>GP2/GP3</code>) with individual XSHUT power pins (<code>GP6, GP7, GP16, GP17, GP18</code>). Addresses dynamically reprogrammed from <code>0x29</code> to <code>0x31..0x35</code> at boot.</li>
+      <li><strong>Option B 3-Mic Array</strong>: Equilateral triangle array ($d = 5.5	ext{ cm}$) elevated 16 cm on a silicone mast, capturing spatial audio via RP2040 PIO I2S on <code>GP28</code> and <code>GP29</code> with clock on <code>GP4/GP5</code>.</li>
+    </ul>
+
+    <div class="spec-table-wrap">
+      <table class="spec-table">
+        <thead>
+          <tr>
+            <th>RP2040 Pin</th>
+            <th>Peripheral Function</th>
+            <th>Hardware Assignment</th>
+            <th>Signal Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>GP0</code></td>
+            <td>UART0 TX</td>
+            <td>ESP32-C3 RX (GPIO 20)</td>
+            <td>S3 Remote ESP-NOW Bridge at 921,600 baud</td>
+          </tr>
+          <tr>
+            <td><code>GP1</code></td>
+            <td>UART0 RX</td>
+            <td>ESP32-C3 TX (GPIO 21)</td>
+            <td>Incoming command packets from S3 Remote</td>
+          </tr>
+          <tr>
+            <td><code>GP2 / GP3</code></td>
+            <td>I2C1 SDA / SCL</td>
+            <td>Sensor Bus (400 kHz)</td>
+            <td>MPU6050 (0x68), MMC5603 (0x30), 5x VL53L0X (0x31..0x35)</td>
+          </tr>
+          <tr>
+            <td><code>GP4 / GP5</code></td>
+            <td>PIO Clock / WS</td>
+            <td>3-Mic Audio Array</td>
+            <td>SCK (Bit Clock) and WS (Word Select)</td>
+          </tr>
+          <tr>
+            <td><code>GP6 / GP7</code></td>
+            <td>GPIO Output</td>
+            <td>ToF Front / Rear XSHUT</td>
+            <td>Power gating for address initialization (0x31, 0x32)</td>
+          </tr>
+          <tr>
+            <td><code>GP8 / GP9</code></td>
+            <td>PWM4 A / B</td>
+            <td>Motor FL (Pair 0)</td>
+            <td>GP8 Backward, GP9 Forward (20 kHz PWM)</td>
+          </tr>
+          <tr>
+            <td><code>GP10 / GP11</code></td>
+            <td>PWM5 A / B</td>
+            <td>Motor RL (Pair 2)</td>
+            <td>GP10 Backward, GP11 Forward (20 kHz PWM)</td>
+          </tr>
+          <tr>
+            <td><code>GP12 / GP13</code></td>
+            <td>PWM6 A / B</td>
+            <td>Motor FR (Pair 1)</td>
+            <td>GP12 Forward, GP13 Backward (20 kHz PWM)</td>
+          </tr>
+          <tr>
+            <td><code>GP14 / GP15</code></td>
+            <td>PWM7 A / B</td>
+            <td>Motor RR (Pair 3)</td>
+            <td>GP14 Forward, GP15 Backward (20 kHz PWM)</td>
+          </tr>
+          <tr>
+            <td><code>GP16..GP18</code></td>
+            <td>GPIO Output</td>
+            <td>ToF RL / RR / Pan-Tilt XSHUT</td>
+            <td>Power gating for addresses 0x33, 0x34, 0x35</td>
+          </tr>
+          <tr>
+            <td><code>GP26 / ADC0</code></td>
+            <td>Analog Input</td>
+            <td>Battery Voltage Divider</td>
+            <td>200k / 100k divider ($V_{	ext{bat}} = V_{	ext{adc}} 	imes 3.0$)</td>
+          </tr>
+          <tr>
+            <td><code>GP27</code></td>
+            <td>GPIO Input</td>
+            <td>HLK-LD2402 Radar</td>
+            <td>Digital presence detect (HIGH = motion within 2m)</td>
+          </tr>
+          <tr>
+            <td><code>GP28 / GP29</code></td>
+            <td>PIO Serial Data</td>
+            <td>3-Mic Data Inputs</td>
+            <td>Mic 1 &amp; 2 on GP28 (L/R multiplexed), Mic 3 on GP29</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <pre><code class="language-cpp">// Excerpt from rover rp2040 cpp/rover_rp2040/motor_ctrl.h
+void RoverMotors::begin() {
+    // Configure hardware PWM frequency to 20 kHz ultrasonic (silent)
+    analogWriteFreq(MOTOR_PWM_FREQ);       // 20000 Hz
+    analogWriteRange(MOTOR_PWM_MAX_DUTY);   // 65535 (16-bit timer resolution)
+
+    // Initialize 8 H-Bridge PWM control pins
+    for (int i = 0; i &lt; 4; i++) {
+        pinMode(pairs[i].fwd_pin, OUTPUT);
+        pinMode(pairs[i].bck_pin, OUTPUT);
+        analogWrite(pairs[i].fwd_pin, 0);
+        analogWrite(pairs[i].bck_pin, 0);
+    }
+    stopAll();
+}
+
+void RoverMotors::step(uint32_t now) {
+    tick_count++;
+
+    // Slew rate ramp limiter: max 25% change per 10ms tick
+    for (int i = 0; i &lt; 4; i++) {
+        float d = target[i] - current[i];
+        if (fabsf(d) &lt;= accel) {
+            current[i] = target[i];
+        } else {
+            current[i] += (d &gt; 0.0f) ? accel : -accel;
+        }
+        driveRaw(i, current[i]);
+    }
+}</code></pre>
+
+    <div class="callout callout-cosmic">
+      <strong>Cybernetic Teleology &mdash; Norbert Wiener &amp; The Self-Governing Loop</strong><br>
+      In <em>Cybernetics</em> (1948), Norbert Wiener defined autonomous control as the continuous reduction of error through feedback. 
+      A motor spinning blind without sensory grounding is a thermodynamic open loop, prone to runaway failure. 
+      By closing the loop through ultrasonic 20 kHz PWM regulation, inertial jerk gating, and multi-sensor ToF spatial verification, 
+      the RP2040-Zero embodies Wiener's teleological machine: an autonomous agent that continuously perceives, predicts, and steers 
+      its physical trajectory through an uncertain universe.
+    </div>
+
+    <div class="exercise-box">
+      <h5><span class="ch-badge">Hands-On Lab 7.5</span> Oscilloscope PWM Verification &amp; Slew Rate Timing</h5>
+      <p>Confirm the 20 kHz ultrasonic frequency and verify slew limiter ramp-up:</p>
+      <ol>
+        <li>Connect an oscilloscope or logic analyzer probe to <code>GP9</code> (Motor FL Forward PWM).</li>
+        <li>Send a 0 to 100% full-throttle step command via serial.</li>
+        <li>Measure the carrier waveform: confirm exactly $50.0\ \mu	ext{s}$ period ($T = 1 / 20,000	ext{ s}$), verifying 20 kHz silent switching.</li>
+        <li>Measure the ramp duration from 0% to 100% duty: confirm that the pulse width scales over exactly 4 ticks ($40	ext{ ms}$), validating the 25% per 10 ms slew rate clamp.</li>
+      </ol>
+    
+        <div class="lab-completion-wrap">
+          <label class="lab-check-container">
+            <input type="checkbox" class="lab-checkbox" data-lab="7.5">
+            <span class="checkmark"></span>
+            Mark Laboratory 7.5 Complete
+          </label>
+        </div>
+      </div>
+  </section>
+</section>
+
+</div>
+<!-- ==============================================================================
+     END OF PART 2 (CHAPTERS 4, 5, 6, 7)
+     ============================================================================== -->

@@ -1,0 +1,1475 @@
+<!-- ==============================================================================
+     CYBERDECK & MECANUM ROVER TECHNICAL MEGASERIES & COURSE
+     PART 3: CHAPTERS 8, 9, AND 10 (MINI-CHAPTERS 8.1 - 10.5)
+     Author: Ayush Dubey (Lead Hardware Architect & Biophysicist)
+     Publication Target: ayushdubey.tech /boost/boost
+     Architecture: RP2040-Zero, ESP32-C3, ESP32-S3-Zero, Pi 4B, Pi 3B+, Lubuntu Hub
+     ============================================================================== -->
+
+<section class="megaseries-part" id="part-3-sensor-fusion-and-epistemology">
+
+<!-- Scoped Zero-Overflow CSS conforming to ayushdubey.tech Sci-Fi HUD design language -->
+<style>
+  .megaseries-part {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: #cbd5e1;
+    background-color: transparent;
+    line-height: 1.75;
+    font-size: clamp(1rem, 0.95rem + 0.35vw, 1.125rem);
+    max-width: 100%;
+    overflow-wrap: break-word;
+    word-break: break-word;
+    box-sizing: border-box;
+  }
+  .megaseries-part * {
+    box-sizing: border-box;
+  }
+  .megaseries-part h2.chapter-title {
+    font-size: clamp(1.8rem, 4vw, 2.6rem);
+    color: #ffffff;
+    border-bottom: 2px solid rgba(0, 240, 255, 0.4);
+    padding-bottom: 0.75rem;
+    margin-top: 3.5rem;
+    margin-bottom: 1.5rem;
+    letter-spacing: -0.02em;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+  }
+  .megaseries-part h2.chapter-title .ch-badge {
+    background: linear-gradient(135deg, #00f0ff, #0284c7);
+    color: #040813;
+    font-size: 0.95rem;
+    font-weight: 800;
+    padding: 4px 14px;
+    border-radius: 9999px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    display: inline-block;
+  }
+  .megaseries-part h3.mini-chapter-title {
+    font-size: clamp(1.3rem, 2.5vw, 1.75rem);
+    color: #38bdf8;
+    margin-top: 2.75rem;
+    margin-bottom: 1.1rem;
+    border-left: 4px solid #00f0ff;
+    padding-left: 14px;
+    line-height: 1.35;
+  }
+  .megaseries-part h4 {
+    font-size: 1.2rem;
+    color: #f1f5f9;
+    margin-top: 1.75rem;
+    margin-bottom: 0.65rem;
+    font-weight: 600;
+  }
+  .megaseries-part p {
+    margin-bottom: 1.25rem;
+    text-align: justify;
+  }
+  .megaseries-part pre {
+    max-width: 100%;
+    width: 100%;
+    box-sizing: border-box;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    white-space: pre;
+    background: #080e1a;
+    border: 1px solid rgba(56, 189, 248, 0.25);
+    border-radius: 8px;
+    padding: 1.25rem;
+    font-family: 'Fira Code', ui-monospace, Menlo, Monaco, Consolas, monospace;
+    font-size: 0.88rem;
+    line-height: 1.55;
+    color: #e2e8f0;
+    margin: 1.5rem 0;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  }
+  .megaseries-part code {
+    font-family: 'Fira Code', ui-monospace, Menlo, Monaco, Consolas, monospace;
+    font-size: 0.9em;
+    background: rgba(56, 189, 248, 0.12);
+    color: #38bdf8;
+    padding: 2px 6px;
+    border-radius: 4px;
+    word-break: break-word;
+    overflow-wrap: break-word;
+  }
+  .megaseries-part pre code {
+    background: transparent;
+    color: inherit;
+    padding: 0;
+    word-break: normal;
+    overflow-wrap: normal;
+  }
+  .spec-table-wrap {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    margin: 1.75rem 0;
+    border-radius: 8px;
+    border: 1px solid rgba(56, 189, 248, 0.25);
+    background: rgba(14, 25, 46, 0.65);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
+  }
+  .spec-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.92rem;
+    text-align: left;
+  }
+  .spec-table th {
+    background: rgba(20, 35, 62, 0.9);
+    color: #00f0ff;
+    padding: 12px 16px;
+    border-bottom: 1px solid rgba(56, 189, 248, 0.35);
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    white-space: nowrap;
+  }
+  .spec-table td {
+    padding: 11px 16px;
+    border-bottom: 1px solid rgba(56, 189, 248, 0.12);
+    color: #cbd5e1;
+    vertical-align: top;
+  }
+  .spec-table tr:hover td {
+    background: rgba(56, 189, 248, 0.06);
+  }
+  .callout {
+    border-radius: 8px;
+    padding: 1.25rem 1.5rem;
+    margin: 1.75rem 0;
+    border-left: 4px solid;
+    background: rgba(15, 27, 49, 0.8);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+  }
+  .callout-info {
+    border-left-color: #00f0ff;
+    background: rgba(8, 28, 48, 0.7);
+  }
+  .callout-info strong {
+    color: #00f0ff;
+  }
+  .callout-warning {
+    border-left-color: #fbbf24;
+    background: rgba(48, 36, 10, 0.7);
+  }
+  .callout-warning strong {
+    color: #fbbf24;
+  }
+  .callout-biomimetic {
+    border-left-color: #4ade80;
+    background: rgba(10, 36, 20, 0.7);
+  }
+  .callout-biomimetic strong {
+    color: #4ade80;
+  }
+  .callout-cosmic {
+    border-left-color: #c084fc;
+    background: rgba(30, 16, 50, 0.7);
+  }
+  .callout-cosmic strong {
+    color: #c084fc;
+  }
+  .lab-card, .exercise-box {
+    background: linear-gradient(135deg, rgba(14, 25, 46, 0.95), rgba(8, 14, 26, 0.98));
+    border: 1px solid rgba(56, 189, 248, 0.35);
+    border-left: 5px solid #10b981;
+    border-radius: 10px;
+    padding: 1.5rem;
+    margin: 2.25rem 0;
+    box-shadow: 0 6px 22px rgba(0, 0, 0, 0.45);
+  }
+  .lab-badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 9999px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    background: rgba(16, 185, 129, 0.2);
+    color: #10b981;
+    border: 1px solid rgba(16, 185, 129, 0.4);
+    margin-bottom: 0.75rem;
+  }
+  .lab-card h4, .exercise-box h5 {
+    color: #00f0ff;
+    font-size: 1.15rem;
+    margin-top: 0;
+    margin-bottom: 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .lab-card ol, .lab-card ul, .exercise-box ol, .exercise-box ul {
+    margin-left: 1.25rem;
+    color: #cbd5e1;
+  }
+  .lab-card li, .exercise-box li {
+    margin-bottom: 0.5rem;
+  }
+  .math-block {
+    overflow-x: auto;
+    padding: 1rem 0;
+    text-align: center;
+    color: #f1f5f9;
+  }
+</style>
+
+<!-- ==============================================================================
+     CHAPTER 8
+     ============================================================================== -->
+<article class="chapter-block" id="chapter-8">
+  <h2 class="chapter-title">
+    <span class="ch-badge">Chapter 08</span>
+    Biomimetic Spatial Audition &amp; Multi-Modal Sensor Fusion
+  </h2>
+
+  <p>
+    An embodied creature cannot survive in a complex physical environment with vision alone. Optical photons require an unobstructed line-of-sight; they fail around blind corners, disintegrate in zero-lux voids, and offer negligible perceptual warning when a dynamic hazard approaches from behind. In biological phylogenies, audition evolved not as a luxury for symbolic communication, but as an omnidirectional, non-line-of-sight early warning radar operating day and night.
+  </p>
+  <p>
+    In this chapter, we bridge high-speed silicon state machines with evolutionary biophysics. We detail how the Waveshare RP2040-Zero controller captures microsecond-synchronized acoustic wavefronts across an equilateral 3-microphone planar array using Programmable Input/Output (PIO) hardware, decodes acoustic Direction-of-Arrival (DOA) via GCC-PHAT and SRP-PHAT phase-whitening cross-correlation, rejects ultrasonic multipath artifacts, multiplexes dual time-of-flight laser rangers with sub-millimeter precision, and gates odometric dead-reckoning through high-frequency inertial jerk filtering.
+  </p>
+
+  <!-- MINI-CHAPTER 8.1 -->
+  <section class="mini-chapter" id="mini-8-1">
+    <h3 class="mini-chapter-title">8.1 RP2040 PIO State-Machine I2S Capture for the 3-Mic Equilateral Array</h3>
+    
+    <p>
+      Traditional microcontrollers attempt to interface digital I2S MEMS microphones through fixed hardware peripherals or CPU-intensive interrupt-driven bit-banging. The former approach restricts the engineer to fixed pinouts and limits multichannel scalability (often supporting only 2 channels per hardware I2S peripheral), while the latter introduces non-deterministic interrupt latency and jitter that fatally corrupts sub-microsecond acoustic phase alignment.
+    </p>
+    <p>
+      The Raspberry Pi RP2040 overcomes this bottleneck through its dual Programmable I/O (PIO) blocks. Each PIO block features four independent, deterministic state machines executing assembly instructions at the system clock speed ($133\text{ MHz}$). To sample three omnidirectional INMP441 MEMS microphones synchronously with zero inter-channel clock skew, we implemented a custom PIO program operating two continuous input pins in parallel with cycle-accurate bit-clock and word-select generation.
+    </p>
+
+    <div class="callout callout-info">
+      <strong>Hardware Pin Routing (Option B Direct RP2040 Architecture):</strong>
+      <ul style="margin: 0.5rem 0 0 1.25rem;">
+        <li><code>GP4</code>: I2S Bit Clock (<code>SCK</code>) &mdash; Continuous $1.024\text{ MHz}$ clock shared across all 3 INMP441 microphones (PIO side-set base pin 0).</li>
+        <li><code>GP5</code>: I2S Word Select (<code>WS</code> / LRCLK) &mdash; $16\text{ kHz}$ frame strobe shared across all 3 INMP441 microphones (PIO set base pin 0).</li>
+        <li><code>GP28</code>: Serial Data Line 0 (<code>SD0</code>) &mdash; Multiplexes Mic 1 (Front, $0^\circ$, <code>L/R=GND</code>) on Left Channel and Mic 2 (Rear-Right, $-120^\circ$, <code>L/R=3V3</code>) on Right Channel.</li>
+        <li><code>GP29</code>: Serial Data Line 1 (<code>SD1</code>) &mdash; Samples Mic 3 (Rear-Left, $+120^\circ$, <code>L/R=GND</code>) on Left Channel.</li>
+      </ul>
+    </div>
+
+    <p>
+      The PIO program executes an 8-instruction cycle that asserts the bit clock via side-set while clocking 32 bits per channel. Below is the production PIO assembly program and C initialization helper from <a href="file:///C:/Users/dell/Desktop/rover/ros2/firmware/pico_3mic_i2s_capture.pio.h"><code>ros2/firmware/pico_3mic_i2s_capture.pio.h</code></a>:
+    </p>
+
+    <pre><code>// ---------------------------------------------------------------- //
+// Pico 3-Microphone Synchronous I2S Capture PIO Program
+// Target: Waveshare RP2040-Zero (Rover Main Controller)
+// Microphones: 3x INMP441 MEMS I2S (Equilateral Baseline d = 5.5 cm)
+// ---------------------------------------------------------------- //
+
+// Raw PIO instructions for dual-data line 3-mic I2S sampling
+// Uses sideset on SCK (1 bit) and sets WS
+static const uint16_t pico_3mic_i2s_program_instructions[] = {
+    // 0: set x, 30        side 0b0    ; 31 data bits loop counter
+    0xe03e,
+    // 1: set pins, 0      side 0b0    ; Assert Left Channel (WS = 0)
+    0xe000,
+    // 2: in pins, 2       side 0b1    ; Sample SD0 & SD1 on SCK rising edge
+    0x4802,
+    // 3: jmp x--, 2       side 0b0    ; Loop through Left Channel 31 bits
+    0x0042,
+    // 4: set x, 30        side 0b0    ; Reset counter for Right Channel
+    0xe03e,
+    // 5: set pins, 1      side 0b0    ; Assert Right Channel (WS = 1)
+    0xe001,
+    // 6: in pins, 2       side 0b1    ; Sample SD0 & SD1 on SCK rising edge
+    0x4802,
+    // 7: jmp x--, 6       side 0b0    ; Loop through Right Channel 31 bits
+    0x0046,
+};
+
+static inline void pico_3mic_i2s_program_init(
+    PIO pio, uint sm, uint offset,
+    uint sck_pin, uint ws_pin, uint sd_base_pin,
+    uint32_t sample_rate
+) {
+    pio_sm_config c = pio_get_default_sm_config();
+    sm_config_set_wrap(&c, offset + 0, offset + 7);
+    sm_config_set_sideset(&c, 1, false, false);
+
+    // Setup Side-set on SCK (GP4)
+    sm_config_set_sideset_pins(&c, sck_pin);
+    pio_gpio_init(pio, sck_pin);
+    pio_sm_set_consecutive_pindirs(pio, sm, sck_pin, 1, true);
+
+    // Setup SET pin on WS (GP5)
+    sm_config_set_set_pins(&c, ws_pin, 1);
+    pio_gpio_init(pio, ws_pin);
+    pio_sm_set_consecutive_pindirs(pio, sm, ws_pin, 1, true);
+
+    // Setup IN pins on SD0 and SD1 (GP28 and GP29)
+    sm_config_set_in_pins(&c, sd_base_pin);
+    pio_gpio_init(pio, sd_base_pin);
+    pio_gpio_init(pio, sd_base_pin + 1);
+    pio_sm_set_consecutive_pindirs(pio, sm, sd_base_pin, 2, false);
+
+    // Clock divider: 16 kHz sample rate * 64 clock cycles per stereo word = 1.024 MHz BCLK
+    // SysClock (133 MHz) / (1.024 MHz * 2 PIO cycles/bit) = 64.941
+    float div = (float)clock_get_hz(clk_sys) / (sample_rate * 64.0f * 2.0f);
+    sm_config_set_clkdiv(&c, div);
+
+    // Autopush 32 bits into RX FIFO
+    sm_config_set_in_shift(&c, false, true, 32);
+    pio_sm_init(pio, sm, offset, &c);
+    pio_sm_set_enabled(pio, sm, true);
+}</code></pre>
+
+    <p>
+      The state machine outputs a constant $1.024\text{ MHz}$ bit clock and reads <code>GP28</code> and <code>GP29</code> simultaneously into the Input Shift Register (ISR). Direct Memory Access (DMA) channel 0 transfers these 32-bit packed audio words into a double-buffered circular memory pool without triggering a single CPU interrupt during the sample window. The RP2040 presents these 3 synchronized channels as a USB Audio Class 2.0 (UAC2) sound card to the Raspberry Pi 3B+ over native USB-C.
+    </p>
+
+    <!-- Lab 8.1 -->
+    <div class="lab-card">
+      <span class="lab-badge">Hands-On Laboratory 8.1</span>
+      <h4>RP2040 PIO I2S Logic Analyzer Timing Verification</h4>
+      <ol>
+        <li>Connect a logic analyzer (or oscilloscope) to <code>GP4</code> (SCK), <code>GP5</code> (WS), <code>GP28</code> (SD0), and <code>GP29</code> (SD1).</li>
+        <li>Set the sample rate to $\ge 24\text{ MHz}$ and capture a 100ms burst.</li>
+        <li>Verify that the clock on <code>GP4</code> is exactly $1.024\text{ MHz} \pm 0.05\%$, that <code>GP5</code> flips state every 32 bit-clock cycles ($16.0\text{ kHz}$ word select), and that SD0/SD1 data transitions occur on the SCK falling edge and are latched solidly on the SCK rising edge with $>300\text{ ns}$ setup margin.</li>
+      </ol>
+    
+        <div class="lab-completion-wrap">
+          <label class="lab-check-container">
+            <input type="checkbox" class="lab-checkbox" data-lab="8.1">
+            <span class="checkmark"></span>
+            Mark Laboratory 8.1 Complete
+          </label>
+        </div>
+      </div>
+  </section>
+
+  <!-- MINI-CHAPTER 8.2 -->
+  <section class="mini-chapter" id="mini-8-2">
+    <h3 class="mini-chapter-title">8.2 GCC-PHAT &amp; TDOA Acoustic Localization vs <em>Ormia ochracea</em> Tympanal Coupling</h3>
+    
+    <p>
+      In nature, sound localization is dictated by the physical distance between sensory receptors. In large mammals (such as humans with an interaural distance of $\approx 18\text{ cm}$), the brain computes the <strong>Interaural Time Difference</strong> (ITD) $\Delta \tau = \frac{d \sin \theta}{c}$ and <strong>Interaural Level Difference</strong> (ILD). However, when the physical baseline shrinks, $\Delta \tau$ collapses below the temporal resolution of individual neural spikes.
+    </p>
+
+    <div class="callout callout-biomimetic">
+      <strong>Evolutionary Miracle: The Parasitoid Fly <em>Ormia ochracea</em></strong>
+      <p>
+        The female tachinid fly <em>Ormia ochracea</em> tracks the mating songs of field crickets (<em>Gryllus rubens</em>) in complete pitch darkness to deposit parasitic larvae. Her intertympanal distance is less than $0.5\text{ mm}$, yielding a theoretical maximum acoustic delay of only $1.5\ \mu\text{s}$&mdash;far below the $100\ \mu\text{s}$ response time of insect action potentials.
+      </p>
+      <p>
+        <em>Ormia</em> overcame this physical limit through a rigid cuticular bridge mechanically linking her left and right tympanic membranes. When an incident sound strikes one ear, the mechanical intertympanal rocker oscillates in a combination of rocking and bending modes, amplifying the acoustic phase lag into an apparent time difference exceeding $50\ \mu\text{s}$ and a $12\text{ dB}$ level disparity. This mechanical analog preprocessing achieves an astounding directional accuracy of $\pm 2^\circ$.
+      </p>
+    </div>
+
+    <p>
+      On our autonomous rover, we adopt a biomimetic spatial configuration. We mount three omnidirectional INMP441 microphones in an equilateral triangle with baseline side length $d = 5.5\text{ cm}$ ($0.055\text{ m}$) elevated on a 16 cm vibration-damped mast.
+    </p>
+
+    <div class="math-block">
+      $$R = \frac{d}{\sqrt{3}} \approx 3.175\text{ cm}$$
+      $$\mathbf{r}_1 = (+R, 0, 0), \quad \mathbf{r}_2 = \left(-\frac{R}{2}, -\frac{\sqrt{3}R}{2}, 0\right), \quad \mathbf{r}_3 = \left(-\frac{R}{2}, +\frac{\sqrt{3}R}{2}, 0\right)$$
+    </div>
+
+    <p>
+      To prevent spatial aliasing (where the phase delay between elements exceeds $\pi$ radians, creating false grating lobes), the array baseline must satisfy:
+    </p>
+    <div class="math-block">
+      $$d \le \frac{\lambda_{\min}}{2} = \frac{c}{2 f_{\max}} \implies f_{\text{alias}} = \frac{343\text{ m/s}}{2 \times 0.055\text{ m}} \approx 3118\text{ Hz}$$
+    </div>
+    <p>
+      Human vocal formants (F1 through F3) fall squarely between $300\text{ Hz}$ and $3100\text{ Hz}$. By applying a 4th-order Butterworth bandpass filter spanning $[300\text{ Hz}, 3100\text{ Hz}]$, we eliminate spatial aliasing while retaining $>90\%$ of voice acoustic energy.
+    </p>
+    <p>
+      To resolve the direction of arrival $\phi \in [0^\circ, 360^\circ)$, we compute the <strong>Generalized Cross-Correlation with Phase Transform (GCC-PHAT)</strong> between each microphone pair $(i, j)$:
+    </p>
+    <div class="math-block">
+      $$R_{ij}^{\text{PHAT}}(\tau) = \mathcal{F}^{-1} \left\{ \frac{X_i(f) X_j^*(f)}{|X_i(f) X_j^*(f)|} \right\}$$
+    </div>
+    <p>
+      Dividing the cross-spectral density by its absolute magnitude whitens the signal, removing reverberant room echoes and isolating the direct line-of-sight delta pulse. For an equilateral triangle, the three non-parallel baseline pairs yield unique geometric delays:
+    </p>
+    <div class="math-block">
+      $$\tau_{12}(\phi) = \frac{d}{c} \cos(\phi - 30^\circ), \quad \tau_{23}(\phi) = \frac{d}{c} \sin(\phi), \quad \tau_{31}(\phi) = \frac{d}{c} \cos(\phi + 150^\circ)$$
+    </div>
+    <p>
+      Unlike a linear 2-mic array (which suffers from mirror-image front/back ambiguity because $\cos \phi = \cos(-\phi)$), our equilateral 3-mic triangle generates a signed, non-degenerate triplet $(\tau_{12}, \tau_{23}, \tau_{31})$ for every horizontal bearing from $0^\circ$ to $360^\circ$, providing unambiguous full-circle spatial localization.
+    </p>
+
+    <!-- Lab 8.2 -->
+    <div class="lab-card">
+      <span class="lab-badge">Hands-On Laboratory 8.2</span>
+      <h4>GCC-PHAT Direction-of-Arrival Calibration</h4>
+      <ol>
+        <li>Play a clean speech utterance from a speaker positioned at exactly $90^\circ$ (right flank, distance $1.5\text{ m}$).</li>
+        <li>Capture 2048-sample frames simultaneously from the 3 channels.</li>
+        <li>Compute the normalized cross-power spectrum:
+          <pre><code>G_12 = (X1 * np.conj(X2)) / (np.abs(X1 * np.conj(X2)) + 1e-9)
+r_12 = np.fft.irfft(G_12)
+tau_12 = np.argmax(r_12)</code></pre>
+        </li>
+        <li>Verify that $\tau_{23}$ peaks at maximum positive delay ($\approx +160\ \mu\text{s}$) while $\tau_{12}$ and $\tau_{31}$ verify the predicted bearing angle within $\pm 3.5^\circ$.</li>
+      </ol>
+    
+        <div class="lab-completion-wrap">
+          <label class="lab-check-container">
+            <input type="checkbox" class="lab-checkbox" data-lab="8.2">
+            <span class="checkmark"></span>
+            Mark Laboratory 8.2 Complete
+          </label>
+        </div>
+      </div>
+  </section>
+
+  <!-- MINI-CHAPTER 8.3 -->
+  <section class="mini-chapter" id="mini-8-3">
+    <h3 class="mini-chapter-title">8.3 Dual VL53L0X Time-of-Flight XSHUT Address Multiplexing &amp; Sensor Geometry</h3>
+    
+    <p>
+      Early rover prototypes utilized ultrasonic transducers (HC-SR04) for collision avoidance. However, in real-world environments, ultrasonic sensing introduces fatal failure modes: a $30^\circ$ acoustic cone reflects specularly off angled walls (causing false infinite distance readings), experiences significant phase crosstalk from room acoustics, and introduces $70\text{ ms}$ round-trip blocking delays. Ultrasonic sensing was permanently decommissioned in favor of 940 nm Time-of-Flight (ToF) VCSEL laser ranging.
+    </p>
+    <p>
+      The STMicroelectronics VL53L0X measures photon flight time at the speed of light ($c \approx 3 \times 10^8\text{ m/s}$), providing millimeter-accurate distance estimation independent of surface reflectance or ambient lighting. However, all VL53L0X modules power up with the same hardcoded I2C factory address: <code>0x29</code>.
+    </p>
+
+    <div class="callout callout-info">
+      <strong>Active ToF Geometry &amp; Bus Addressing:</strong>
+      <ul style="margin: 0.5rem 0 0 1.25rem;">
+        <li><strong>Front ToF</strong>: Located at $0^\circ$, longitudinal offset $+11.0\text{ cm}$ from chassis center. Active I2C address: <code>0x32</code>. Controlled via <code>XSHUT</code> pin on RP2040 <code>GP6</code>.</li>
+        <li><strong>Rear ToF</strong>: Located at $180^\circ$, longitudinal offset $-10.0\text{ cm}$ from chassis center. Active I2C address: <code>0x33</code>. Controlled via <code>XSHUT</code> pin on RP2040 <code>GP7</code>.</li>
+      </ul>
+    </div>
+
+    <p>
+      To resolve the I2C address collision without requiring external multiplexer hardware (like the TCA9548A), the RP2040 drives the hardware shutdown (<code>XSHUT</code>) lines sequentially during boot:
+    </p>
+
+    <pre><code>// Dynamic I2C Address Re-assignment via XSHUT Sequencing
+void initToFSensors() {
+    // 1. Pull both XSHUT lines LOW to place sensors in hardware reset
+    pinMode(PIN_XSHUT_FRONT, OUTPUT); // GP6
+    pinMode(PIN_XSHUT_REAR,  OUTPUT); // GP7
+    digitalWrite(PIN_XSHUT_FRONT, LOW);
+    digitalWrite(PIN_XSHUT_REAR,  LOW);
+    delay(10);
+
+    // 2. Release Front ToF by driving GP6 HIGH
+    digitalWrite(PIN_XSHUT_FRONT, HIGH);
+    delay(10);
+    frontToF.setAddress(0x32); // Reprogram I2C address from 0x29 -> 0x32
+    frontToF.init();
+    frontToF.startContinuous(33); // 33ms continuous budget (30 Hz)
+
+    // 3. Release Rear ToF by driving GP7 HIGH
+    digitalWrite(PIN_XSHUT_REAR, HIGH);
+    delay(10);
+    rearToF.setAddress(0x33);  // Reprogram I2C address from 0x29 -> 0x33
+    rearToF.init();
+    rearToF.startContinuous(33);  // 33ms continuous budget (30 Hz)
+}</code></pre>
+
+    <p>
+      Raw laser distance readings are subjected to a running 5-sample sliding median filter to reject laser shot noise, dropouts, and multi-path spikes before feeding the collision avoidance and mapping pipelines.
+    </p>
+
+    <!-- Lab 8.3 -->
+    <div class="lab-card">
+      <span class="lab-badge">Hands-On Laboratory 8.3</span>
+      <h4>Dual ToF Address Re-Assignment &amp; Spike Filter Verification</h4>
+      <ol>
+        <li>Flash the dynamic XSHUT initialization code to the RP2040.</li>
+        <li>Run an I2C bus scan across <code>I2C1</code> (GP2/GP3) to verify that address <code>0x29</code> is unoccupied and that sensors respond at <code>0x32</code> and <code>0x33</code>.</li>
+        <li>Stream distance measurements while introducing artificial single-sample noise spikes (e.g. passing a high-reflective mirror momentarily across the laser aperture). Confirm that the 5-sample median filter suppresses isolated 250mm spikes with zero latency distortion on nominal distance measurements.</li>
+      </ol>
+    
+        <div class="lab-completion-wrap">
+          <label class="lab-check-container">
+            <input type="checkbox" class="lab-checkbox" data-lab="8.3">
+            <span class="checkmark"></span>
+            Mark Laboratory 8.3 Complete
+          </label>
+        </div>
+      </div>
+  </section>
+
+  <!-- MINI-CHAPTER 8.4 -->
+  <section class="mini-chapter" id="mini-8-4">
+    <h3 class="mini-chapter-title">8.4 HLK-LD2402 24GHz mmWave Radar Presence Gating &amp; Range Segmentation</h3>
+    
+    <p>
+      While optical ToF lasers provide precise point distances, they can be blinded by transparent glass partitions, black velour drapery, or direct sunlight saturation. Furthermore, lasers cannot distinguish between an inanimate cardboard box and a breathing human being. To provide absolute obstacle safety and human-following tracking, we integrated an <strong>HLK-LD2402 24 GHz Frequency-Modulated Continuous Wave (FMCW) radar</strong> into the front bumper ($x = +11\text{ cm}$).
+    </p>
+    <p>
+      Operating in the K-band ($24.00\text{ GHz} - 24.25\text{ GHz}$ with $250\text{ MHz}$ sweep bandwidth), the sensor transmits continuous linear frequency chirps. Reflected signals are mixed with the local oscillator to produce a beat frequency $f_b = \frac{2 B R}{c T} + 2 f_0 \frac{v}{c}$, separating target distance $R$ and radial Doppler velocity $v$.
+    </p>
+
+    <div class="spec-table-wrap">
+      <table class="spec-table">
+        <thead>
+          <tr>
+            <th>Parameter</th>
+            <th>HLK-LD2402 mmWave Radar</th>
+            <th>VL53L0X Laser ToF</th>
+            <th>HC-SR04 Ultrasonic (Decommissioned)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Operating Spectrum</strong></td>
+            <td>24 GHz FMCW Microwave</td>
+            <td>940 nm Infrared Laser</td>
+            <td>40 kHz Acoustic Pressure</td>
+          </tr>
+          <tr>
+            <td><strong>Detection Beamwidth</strong></td>
+            <td>$\pm 60^\circ$ Azimuth, $\pm 35^\circ$ Elevation</td>
+            <td>$25^\circ$ Conical FOV</td>
+            <td>$30^\circ$ Specular Acoustic Cone</td>
+          </tr>
+          <tr>
+            <td><strong>Target Discrimination</strong></td>
+            <td>Micro-motion (chest breathing, pulse)</td>
+            <td>Surface photon time of flight</td>
+            <td>Echo acoustic envelope return</td>
+          </tr>
+          <tr>
+            <td><strong>Material Penetration</strong></td>
+            <td>Penetrates plastics, glass, clothing</td>
+            <td>Reflected by surface skin</td>
+            <td>Reflected by all solid air boundaries</td>
+          </tr>
+          <tr>
+            <td><strong>Hardware Interface</strong></td>
+            <td>GPIO OUT (Presence) + 115200 UART</td>
+            <td>400 kHz Fast I2C (Addressable)</td>
+            <td>GPIO Trigger / Echo Pulse Width</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>
+      The digital presence output pin of the LD2402 is tied directly to RP2040 <code>GP27</code>. When a moving target enters the configurable warning boundary ($< 1.0\text{ m}$), <code>GP27</code> trips high, immediately clamping motor PWM effort through a hardware safety interrupt, while the companion Raspberry Pi 3B+ decodes target range gate energy frames over UART to guide the autonomous person-following servo loop.
+    </p>
+
+    <!-- Lab 8.4 -->
+    <div class="lab-card">
+      <span class="lab-badge">Hands-On Laboratory 8.4</span>
+      <h4>mmWave Radar Presence Interfacing &amp; Safety Clamping</h4>
+      <ol>
+        <li>Wire LD2402 <code>OUT</code> to RP2040 <code>GP27</code> with an internal pull-down resistor enabled.</li>
+        <li>Attach a hardware interrupt to <code>GP27</code> triggering on <code>RISING</code> edge:
+          <pre><code>attachInterrupt(digitalPinToInterrupt(PIN_RADAR_OUT), isr_radar_trigger, RISING);</code></pre>
+        </li>
+        <li>Place an optical obstruction (transparent plexiglass sheet) $30\text{ cm}$ in front of the rover. Move your hand behind the acrylic pane. Verify that while the laser ToF may report infinite range through the transparent glass, the 24GHz FMCW radar trips <code>GP27</code> within $25\text{ ms}$, enforcing immediate emergency motor brake clamping.</li>
+      </ol>
+    
+        <div class="lab-completion-wrap">
+          <label class="lab-check-container">
+            <input type="checkbox" class="lab-checkbox" data-lab="8.4">
+            <span class="checkmark"></span>
+            Mark Laboratory 8.4 Complete
+          </label>
+        </div>
+      </div>
+  </section>
+
+  <!-- MINI-CHAPTER 8.5 -->
+  <section class="mini-chapter" id="mini-8-5">
+    <h3 class="mini-chapter-title">8.5 400 kHz I2C1 IMU/Magnetometer Sensor Fusion &amp; Dead Reckoning</h3>
+    
+    <p>
+      Accurate odometry on a holonomic vehicle is notoriously difficult. Unlike differential drive robots where wheels roll without lateral slip, Mecanum rollers operate under continuous friction, vector shear, and micro-slippage. Integrating raw wheel encoder counts causes rapid positional divergence.
+    </p>
+    <p>
+      To establish a drift-free reference frame, the RP2040 polls an MPU6050 6-DoF IMU and a QMC5883L 3-axis magnetometer over its 400 kHz Fast-Mode I2C1 bus (<code>GP2</code> SDA, <code>GP3</code> SCL) at a deterministic $100\text{ Hz}$ update rate. Core 0 executes an optimized 9-DoF Madgwick Attitude Heading Reference System (AHRS) filter, utilizing the RP2040 bootrom hardware accelerated floating-point routines:
+    </p>
+
+    <div class="math-block">
+      $$\mathbf{q}_{t} = \mathbf{q}_{t-1} + \left( \frac{1}{2} \mathbf{q}_{t-1} \otimes \boldsymbol{\omega}_t - \beta \frac{\nabla f}{\|\nabla f\|} \right) \Delta t$$
+    </div>
+
+    <div class="callout callout-warning">
+      <strong>The Rest-Drift Dilemma &amp; Motion-Gated Dynamic Jerk:</strong>
+      <p>
+        Low-cost MEMS gyroscopes exhibit thermal bias drift ($\approx 0.05^\circ/\text{s}$). If dead-reckoning equations integrate attitude continuously while the rover is physically stationary on a workbench, accumulated angular error will rotate the virtual coordinate frame, causing false translation.
+      </p>
+      <p>
+        To permanently eradicate rest drift, odometric integration is gated by a dynamic jerk and angular rate threshold:
+      </p>
+      <div class="math-block">
+        $$\text{Motion Valid} \iff (\text{dynJerk} > 0.045\text{ g}) \lor (|\omega_z| > 0.06\text{ rad/s})$$
+      </div>
+      <p>
+        Where $\text{dynJerk} = \|\mathbf{a}_t - \mathbf{a}_{t-1}\|_2$. If the measured vehicle jerk and rotation rate remain beneath these thresholds for $> 60\text{ ms}$, attitude integration is held rigid, freezing dead-reckoning coordinates until real mechanical acceleration occurs.
+      </p>
+    </div>
+
+    <!-- Lab 8.5 -->
+    <div class="lab-card">
+      <span class="lab-badge">Hands-On Laboratory 8.5</span>
+      <h4>Dead-Reckoning Jerk Filter Benchmarking</h4>
+      <ol>
+        <li>Place the rover stationary on a test workbench for 5 minutes while logging odometry:
+          <pre><code>python -m unittest tests/test_rover_modules.py -k test_gated_dead_reckoning</code></pre>
+        </li>
+        <li>Verify that zero displacement is logged during stationary rest ($(\Delta x, \Delta y) = (0.0, 0.0)\text{ cm}$), confirming complete elimination of gyro bias drift.</li>
+        <li>Apply a manual nudge to the chassis. Confirm that within 10ms of impact, measured dynamic jerk jumps above $0.045\text{ g}$, unfreezing the integrator and tracking position instantaneously.</li>
+      </ol>
+    
+        <div class="lab-completion-wrap">
+          <label class="lab-check-container">
+            <input type="checkbox" class="lab-checkbox" data-lab="8.5">
+            <span class="checkmark"></span>
+            Mark Laboratory 8.5 Complete
+          </label>
+        </div>
+      </div>
+  </section>
+</article>
+
+<!-- ==============================================================================
+     CHAPTER 9
+     ============================================================================== -->
+<article class="chapter-block" id="chapter-9">
+  <h2 class="chapter-title">
+    <span class="ch-badge">Chapter 09</span>
+    High-Speed Radio Bridge, Visual Biocommunication &amp; 3D Log-Odds Mapping
+  </h2>
+
+  <p>
+    Robotic embodiment requires transparent externalization of internal mental states. When an autonomous machine plans a path, encounters mechanical stiction, or suffers an unexpected physical impact, human bystanders must immediately perceive its internal cognitive posture without parsing text logs on a terminal.
+  </p>
+  <p>
+    In this chapter, we design the low-latency communication spine between the remote cyberdeck and the mobile chassis. We construct a 921,600-baud CRC16-CCITT framed binary UART bridge driven by an ESP32-C3 radio coprocessor, implement a 40-LED WS2812 bioluminescent telemetry ring representing 12 autonomic navigation states, build a Bayesian log-odds 3D occupancy grid mapper with Bresenham ray-marching free-space clearing, and benchmark an 80ms low-latency camera proxy.
+  </p>
+
+  <!-- MINI-CHAPTER 9.1 -->
+  <section class="mini-chapter" id="mini-9-1">
+    <h3 class="mini-chapter-title">9.1 ESP-NOW to 921,600-Baud UART0 Bridge with CRC16-CCITT Framing</h3>
+    
+    <p>
+      Traditional mobile robotics architectures route Wi-Fi TCP/IP packets between nodes. However, TCP window management, retransmission timeouts, and Wi-Fi roaming handshakes introduce jitter spikes from $20\text{ ms}$ up to $250\text{ ms}$&mdash;unacceptable for high-rate teleoperation or closed-loop stabilization.
+    </p>
+    <p>
+      Our architecture splits the RF reception from the real-time kinematic control. A dedicated <strong>ESP32-C3 Mini coprocessor</strong> receives raw 2.4 GHz ESP-NOW action frames from the handheld cyberdeck remote at a rock-solid $50\text{ Hz}$ update rate with round-trip latency strictly under $2.5\text{ ms}$. The C3 bridge unpacks the command and re-transmits it across a dedicated high-speed UART link to the RP2040-Zero controller:
+    </p>
+
+    <div class="callout callout-info">
+      <strong>High-Speed Inter-MCU Physical Interconnect:</strong>
+      <ul style="margin: 0.5rem 0 0 1.25rem;">
+        <li>ESP32-C3 <code>GPIO 21</code> (TX) $\to$ RP2040 <code>GP1</code> (RX) @ <strong>921,600 Baud</strong> (8N1).</li>
+        <li>RP2040 <code>GP0</code> (TX) $\to$ ESP32-C3 <code>GPIO 20</code> (RX) @ <strong>921,600 Baud</strong> (8N1).</li>
+        <li>Fallback baud rate auto-negotiation: 460,800 baud if line errors exceed threshold.</li>
+      </ul>
+    </div>
+
+    <p>
+      To guarantee data integrity against motor electromagnetic interference (EMI), every packet is encapsulated within an unambiguous byte-stuffed binary frame with a 16-bit Cyclic Redundancy Check:
+    </p>
+
+    <div class="spec-table-wrap">
+      <table class="spec-table">
+        <thead>
+          <tr>
+            <th>Offset</th>
+            <th>Field</th>
+            <th>Type</th>
+            <th>Value / Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>0</td>
+            <td><code>SYNC0</code></td>
+            <td><code>uint8_t</code></td>
+            <td><code>0xAA</code> &mdash; Frame preamble byte 1</td>
+          </tr>
+          <tr>
+            <td>1</td>
+            <td><code>SYNC1</code></td>
+            <td><code>uint8_t</code></td>
+            <td><code>0x55</code> &mdash; Frame preamble byte 2</td>
+          </tr>
+          <tr>
+            <td>2</td>
+            <td><code>MSG_TYPE</code></td>
+            <td><code>uint8_t</code></td>
+            <td><code>0x01</code> (Cmd), <code>0x02</code> (Telem), <code>0x03</code> (Enc), <code>0x06</code> (ACK)</td>
+          </tr>
+          <tr>
+            <td>3</td>
+            <td><code>LEN</code></td>
+            <td><code>uint8_t</code></td>
+            <td>Payload length $N \le 64$ bytes</td>
+          </tr>
+          <tr>
+            <td>4 .. 4+N-1</td>
+            <td><code>PAYLOAD</code></td>
+            <td><code>uint8_t[N]</code></td>
+            <td>Packed <code>RoverPkt</code> (12 bytes) or <code>TelemPkt</code> (54 bytes)</td>
+          </tr>
+          <tr>
+            <td>4+N</td>
+            <td><code>CRC16_H</code></td>
+            <td><code>uint8_t</code></td>
+            <td>CRC16-CCITT High Byte (covers <code>TYPE</code>, <code>LEN</code>, and <code>PAYLOAD</code>)</td>
+          </tr>
+          <tr>
+            <td>5+N</td>
+            <td><code>CRC16_L</code></td>
+            <td><code>uint8_t</code></td>
+            <td>CRC16-CCITT Low Byte</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>
+      The CRC16-CCITT implementation utilizes polynomial $0x1021$ with initialization $0xFFFF$:
+    </p>
+    <div class="math-block">
+      $$P(x) = x^{16} + x^{12} + x^5 + 1$$
+    </div>
+
+    <p>
+      The state machine parser on both microcontrollers consumes incoming bytes through a strict 7-state deterministic automaton: <code>SEEK_SYNC0</code> $\to$ <code>SEEK_SYNC1</code> $\to$ <code>GET_TYPE</code> $\to$ <code>GET_LEN</code> $\to$ <code>GET_PAYLOAD</code> $\to$ <code>GET_CRC_H</code> $\to$ <code>GET_CRC_L</code>. Corrupted packets are rejected instantly with zero buffer reallocation.
+    </p>
+
+    <!-- Lab 9.1 -->
+    <div class="lab-card">
+      <span class="lab-badge">Hands-On Laboratory 9.1</span>
+      <h4>CRC16-CCITT Frame Parser &amp; Bit-Error Injection Test</h4>
+      <ol>
+        <li>Open <code>Desktop/rover/tests/test_rover_modules.py</code> and review the <code>TestRoverLinkFraming</code> test class.</li>
+        <li>Execute the unit tests:
+          <pre><code>python -m unittest tests/test_rover_modules.py -k TestRoverLinkFraming</code></pre>
+        </li>
+        <li>Inject simulated motor noise by flipping a single bit inside the payload. Verify that the 7-state parser increments <code>crc_errors</code>, cleanly dumps the frame, and re-syncs on the next valid <code>0xAA 0x55</code> sync header without state lockup.</li>
+      </ol>
+    
+        <div class="lab-completion-wrap">
+          <label class="lab-check-container">
+            <input type="checkbox" class="lab-checkbox" data-lab="9.1">
+            <span class="checkmark"></span>
+            Mark Laboratory 9.1 Complete
+          </label>
+        </div>
+      </div>
+  </section>
+
+  <!-- MINI-CHAPTER 9.2 -->
+  <section class="mini-chapter" id="mini-9-2">
+    <h3 class="mini-chapter-title">9.2 40-LED WS2812 Bioluminescent Telemetry Ring &amp; Autonomy Annunciator</h3>
+    
+    <p>
+      In deep-sea cephalopods (such as the reef squid <em>Sepioteuthis lessoniana</em>) and fireflies (<em>Photinus pyralis</em>), bioluminescent pattern generation operates as an honest signaling channel, broadcasting autonomic arousal, tactical hunting modes, and defensive warning postures.
+    </p>
+    <p>
+      To provide intuitive visual biocommunication, the rover chassis is wrapped in an addressable perimeter ring of <strong>40 WS2812B RGB LEDs</strong>. The strip is driven directly by the ESP32-C3 coprocessor on <code>GPIO 5</code> through a 74AHCT125 high-speed CMOS level shifter (converting the 3.3V ESP32 output to clean 5.0V TTL logic) and an inline 330 $\Omega$ series resistor.
+    </p>
+
+    <div class="callout callout-warning">
+      <strong>Power Rail Safety &amp; Brightness Budget:</strong>
+      <p>
+        40 WS2812 LEDs at 100% full-white brightness draw $40 \times 60\text{ mA} = 2.4\text{ A}$&mdash;enough to cause severe voltage drops on the 5V BEC rail and brown out the microcontrollers. The firmware enforces a <strong>hard 27% brightness cap</strong> (value 70/255 in software), strictly limiting peak strip current draw beneath $0.65\text{ A}$ under all operating conditions.
+      </p>
+    </div>
+
+    <p>
+      The visual state machine reflects the exact autonomic state dispatched from the RP2040 navigation engine across 12 distinct visual modes:
+    </p>
+
+    <div class="spec-table-wrap">
+      <table class="spec-table">
+        <thead>
+          <tr>
+            <th>State Index</th>
+            <th>Autonomy State</th>
+            <th>Hex Color</th>
+            <th>Visual Animation &amp; Biomimetic Meaning</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>0</code></td>
+            <td><code>AUTO_CRUISE_CLEAR</code></td>
+            <td><code>#00FF44</code></td>
+            <td>Emerald green 1 Hz sine breathing (Smooth nominal exploration)</td>
+          </tr>
+          <tr>
+            <td><code>1</code></td>
+            <td><code>AUTO_THINKING_SCAN</code></td>
+            <td><code>#FFB700</code></td>
+            <td>Warm amber rotational chase (Sensor histogram accumulation)</td>
+          </tr>
+          <tr>
+            <td><code>2</code></td>
+            <td><code>AUTO_PLANNING_PATH</code></td>
+            <td><code>#0088FF</code></td>
+            <td>Electric blue bilateral split wave (Computing collision-free vector)</td>
+          </tr>
+          <tr>
+            <td><code>3</code></td>
+            <td><code>AUTO_VEER_LEFT</code></td>
+            <td><code>#FF5500</code></td>
+            <td>Tangerine orange left-lateral wipe (Obstacle avoidance maneuver)</td>
+          </tr>
+          <tr>
+            <td><code>4</code></td>
+            <td><code>AUTO_VEER_RIGHT</code></td>
+            <td><code>#FF5500</code></td>
+            <td>Tangerine orange right-lateral wipe (Obstacle avoidance maneuver)</td>
+          </tr>
+          <tr>
+            <td><code>5</code></td>
+            <td><code>AUTO_CAUTIOUS_CREEP</code></td>
+            <td><code>#00FFFF</code></td>
+            <td>Cyan slow pulse (Restricted space, low-speed translation)</td>
+          </tr>
+          <tr>
+            <td><code>6</code></td>
+            <td><code>AUTO_STUCK_DETECTED</code></td>
+            <td><code>#FF0000</code></td>
+            <td>Crimson red 5 Hz strobe (Zero-jerk stall detected under command)</td>
+          </tr>
+          <tr>
+            <td><code>7</code></td>
+            <td><code>AUTO_REVERSE_BACKTRACK</code></td>
+            <td><code>#FF0088</code></td>
+            <td>Magenta reverse traveling flow (Backtracking along prior path)</td>
+          </tr>
+          <tr>
+            <td><code>8</code></td>
+            <td><code>AUTO_SCURVE_ESCAPE</code></td>
+            <td><code>#FF8800</code></td>
+            <td>Amber alternating flow (Wiggling free from dead end)</td>
+          </tr>
+          <tr>
+            <td><code>9</code></td>
+            <td><code>AUTO_COMPASS_PIVOT</code></td>
+            <td><code>#FFB700</code></td>
+            <td>Amber counter-rotating orbit (In-place magnetometer alignment)</td>
+          </tr>
+          <tr>
+            <td><code>10</code></td>
+            <td><code>AUTO_WALL_FOLLOW</code></td>
+            <td><code>#00D0FF</code></td>
+            <td>Cyan lateral contour wave (Following boundary contour)</td>
+          </tr>
+          <tr>
+            <td><code>11</code></td>
+            <td><code>AUTO_IMPACT_REFLEX</code></td>
+            <td><code>#FFFFFF</code></td>
+            <td>Blinding white 50 ms flash (Deceleration shock trigger reflex)</td>
+          </tr>
+          <tr>
+            <td>-</td>
+            <td><code>MANUAL_MODE</code></td>
+            <td><code>#38BDF8</code></td>
+            <td>Ice blue constant gentle glow (Operator direct manual control)</td>
+          </tr>
+          <tr>
+            <td>-</td>
+            <td><code>LINK_LOST</code></td>
+            <td><code>#7E22CE</code></td>
+            <td>Deep purple 2 Hz heartbeat pulse (RF telemetry failsafe active)</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Lab 9.2 -->
+    <div class="lab-card">
+      <span class="lab-badge">Hands-On Laboratory 9.2</span>
+      <h4>WS2812 Visual Annunciator &amp; Current Draw Measurement</h4>
+      <ol>
+        <li>Connect an inline DC ammeter on the 5V BEC line supplying the 40-LED WS2812 strip.</li>
+        <li>Compile and upload <code>c3_bridge/c3_bridge.ino</code> to the ESP32-C3:
+          <pre><code>arduino-cli compile --fqbn esp32:esp32:lolin_c3_mini c3_bridge</code></pre>
+        </li>
+        <li>Trigger the <code>AUTO_IMPACT_REFLEX</code> full-white strobe mode. Confirm that current draw peaks at exactly $0.62\text{ A} \pm 0.03\text{ A}$, perfectly inside the $0.7\text{ A}$ hardware safety limit.</li>
+      </ol>
+    
+        <div class="lab-completion-wrap">
+          <label class="lab-check-container">
+            <input type="checkbox" class="lab-checkbox" data-lab="9.2">
+            <span class="checkmark"></span>
+            Mark Laboratory 9.2 Complete
+          </label>
+        </div>
+      </div>
+  </section>
+
+  <!-- MINI-CHAPTER 9.3 -->
+  <section class="mini-chapter" id="mini-9-3">
+    <h3 class="mini-chapter-title">9.3 Bayesian Log-Odds Occupancy Grid Mapping &amp; Ray-Marching Free-Space Clearing</h3>
+    
+    <p>
+      To construct a persistent spatial map of the environment without the multi-gigabyte memory footprint of full 3D point-cloud libraries, our telemetry hub implements an exact <strong>Bayesian Log-Odds 2D/3D Occupancy Grid</strong>.
+    </p>
+    <p>
+      Let each grid cell $m_i$ possess a binary occupancy state $m_i \in \{\text{occupied}, \text{free}\}$. The probability of occupancy given a sequence of measurements $z_{1:t}$ is tracked via the log-odds ratio:
+    </p>
+    <div class="math-block">
+      $$L(m_i | z_{1:t}) = \ln \left( \frac{p(m_i | z_{1:t})}{1 - p(m_i | z_{1:t})} \right)$$
+    </div>
+    <p>
+      Applying Bayes' rule with a Markov assumption yields the recursive additive update formula:
+    </p>
+    <div class="math-block">
+      $$L(m_i | z_{1:t}) = L(m_i | z_{1:t-1}) + \underbrace{\ln \left( \frac{p(m_i | z_t)}{1 - p(m_i | z_t)} \right)}_{\text{Inverse Sensor Model } l_{\text{sensor}}} - \underbrace{l_0}_{\text{Prior Log-Odds}}$$
+    </div>
+
+    <p>
+      For each laser ToF reading $z_t$ at bearing $\theta$, our web telemetry engine marches a ray from the rover's position $(x_r, y_r)$ to the sensed obstacle coordinate $(x_{\text{hit}}, y_{\text{hit}})$ using an integer <strong>Bresenham ray-marching algorithm</strong>:
+    </p>
+    <ol style="margin-left: 1.5rem; margin-bottom: 1.25rem;">
+      <li><strong>Traversed Cells along Ray ($r < z_t - \epsilon$):</strong> Free space is cleared by subtracting a log-odds decrement: $L \gets \max(L - l_{\text{free}}, L_{\min})$ where $l_{\text{free}} = 0.4$ and $L_{\min} = -4.0$ ($p \approx 0.018$).</li>
+      <li><strong>Endpoint Hit Cell ($|r - z_t| \le \epsilon$):</strong> Obstacle presence is reinforced by adding an occupancy increment: $L \gets \min(L + l_{\text{occ}}, L_{\max})$ where $l_{\text{occ}} = 0.85$ and $L_{\max} = +5.0$ ($p \approx 0.993$).</li>
+      <li><strong>Temporal Confirmation:</strong> To eliminate transient laser dropouts caused by dust particles, a cell is rendered in the WebGL digital twin only after accumulating $\ge 3$ consecutive confirming hits.</li>
+    </ol>
+
+    <!-- Lab 9.3 -->
+    <div class="lab-card">
+      <span class="lab-badge">Hands-On Laboratory 9.3</span>
+      <h4>Bayesian Occupancy Ray-Marching Simulation</h4>
+      <ol>
+        <li>Launch the web telemetry server locally:
+          <pre><code>python Desktop/rover/web_telemetry_server.py --port 8090</code></pre>
+        </li>
+        <li>Open <code>http://localhost:8090</code> in a modern web browser.</li>
+        <li>Inject simulated ToF scan pulses representing a wall at $600\text{ mm}$. Observe that the intermediate cells along the ray are cleared to dark transparent blue ($L = -4.0$) while the boundary wall cells progressively turn neon amber and lock to solid red after 3 confirming cycles ($L \ge +2.55$).</li>
+      </ol>
+    
+        <div class="lab-completion-wrap">
+          <label class="lab-check-container">
+            <input type="checkbox" class="lab-checkbox" data-lab="9.3">
+            <span class="checkmark"></span>
+            Mark Laboratory 9.3 Complete
+          </label>
+        </div>
+      </div>
+  </section>
+
+  <!-- MINI-CHAPTER 9.4 -->
+  <section class="mini-chapter" id="mini-9-4">
+    <h3 class="mini-chapter-title">9.4 80ms Low-Latency Snapshot Camera Proxy &amp; WebRTC/HTTP Pipeline</h3>
+    
+    <p>
+      Streaming video over embedded links often introduces significant CPU overhead and memory churn. When browsers ingest continuous Motion-JPEG (MJPEG) streams via native <code>&lt;img src="..."&gt;</code> tags, the browser rendering engine retains uncompressed bitmap surfaces in memory, causing memory bloat, socket starvation, and unrecoverable frame buffering delays.
+    </p>
+    <p>
+      Our architecture implements an asynchronous <strong>80ms Snapshot Proxy</strong> on the host server (<code>web_telemetry_server.py</code> at port 8090). A dedicated background Python task queries the Raspberry Pi 3B+ vision coprocessor (<code>192.168.0.103:8081</code>) over LAN, fetching discrete JPEG frames into memory buffers. The web dashboard polls <code>/api/pi_cam/snapshot</code> at $12.5\text{ FPS}$ ($80\text{ ms}$ interval) using double-buffered <code>Image()</code> objects:
+    </p>
+
+    <pre><code>// Low-Latency Double-Buffered Camera Snapshot Engine
+const camImg = document.getElementById('camera-feed');
+const offscreenImg = new Image();
+let fetching = false;
+
+function pollSnapshot() {
+    if (fetching) return;
+    fetching = true;
+    const startMs = performance.now();
+    
+    offscreenImg.src = '/api/pi_cam/snapshot?t=' + Date.now();
+    offscreenImg.onload = () => {
+        camImg.src = offscreenImg.src;
+        fetching = false;
+        const latency = Math.round(performance.now() - startMs);
+        document.getElementById('cam-latency-hud').innerText = latency + ' ms';
+        setTimeout(pollSnapshot, Math.max(10, 80 - latency));
+    };
+    offscreenImg.onerror = () => {
+        fetching = false;
+        setTimeout(pollSnapshot, 200);
+    };
+}
+pollSnapshot();</code></pre>
+
+    <p>
+      This pipeline guarantees zero DOM memory accumulation, bypasses browser socket exhaustion, maintains a strict memory footprint under $35\text{ MB}$ on the Pi 3B+, and provides real-time video feedback with sub-100ms glass-to-glass latency.
+    </p>
+
+    <!-- Lab 9.4 -->
+    <div class="lab-card">
+      <span class="lab-badge">Hands-On Laboratory 9.4</span>
+      <h4>Camera Latency &amp; Memory Leak Profiling</h4>
+      <ol>
+        <li>Open the DevTools Memory panel while streaming snapshots for 10 minutes at $12.5\text{ FPS}$.</li>
+        <li>Capture a Heap Snapshot at minute 1 and minute 10.</li>
+        <li>Verify that JS Heap memory remains completely flat (delta $< 2\text{ MB}$), confirming that previous Image buffers are collected by the V8 garbage collector with zero retain cycles.</li>
+      </ol>
+    
+        <div class="lab-completion-wrap">
+          <label class="lab-check-container">
+            <input type="checkbox" class="lab-checkbox" data-lab="9.4">
+            <span class="checkmark"></span>
+            Mark Laboratory 9.4 Complete
+          </label>
+        </div>
+      </div>
+  </section>
+
+  <!-- MINI-CHAPTER 9.5 -->
+  <section class="mini-chapter" id="mini-9-5">
+    <h3 class="mini-chapter-title">9.5 12-State Autonomous Navigation Finite State Machine</h3>
+    
+    <p>
+      The rover’s autonomous brain is implemented as a deterministic <strong>12-State Navigation Finite State Machine (FSM)</strong> executing on RP2040 Core 0 at $50\text{ Hz}$. The state machine continuously balances forward goal attraction, laser clearance, and mechanical stall detection:
+    </p>
+
+    <div class="callout callout-info">
+      <strong>Autonomic Finite State Machine Transitions:</strong>
+      <ul style="margin: 0.5rem 0 0 1.25rem;">
+        <li><code>CRUISE_CLEAR (0)</code>: Forward translation at nominal speed ($v_x = 65\%$). Active while Front ToF clearance $d_F > 450\text{ mm}$.</li>
+        <li><code>THINKING_SCAN (1)</code>: Halts forward motion when $d_F < 450\text{ mm}$; spins in-place $\pm 30^\circ$ to gather a 12-sector polar histogram of surrounding clearance.</li>
+        <li><code>PLANNING_PATH (2)</code>: Evaluates polar histogram sectors; selects optimal exit vector maximizing obstacle distance.</li>
+        <li><code>VEER_LEFT (3) / VEER_RIGHT (4)</code>: Executes holonomic diagonal strafe avoiding detected lateral obstacle.</li>
+        <li><code>CAUTIOUS_CREEP (5)</code>: Low-speed crawl ($v_x = 25\%$) when navigating narrow corridors ($180\text{ mm} < d_F < 280\text{ mm}$).</li>
+        <li><code>STUCK_DETECTED (6)</code>: Triggered if motor drive effort $> 15\%$ but measured IMU jerk $< 0.03\text{ g}$ for $> 350\text{ ms}$.</li>
+        <li><code>REVERSE_BACKTRACK (7)</code>: Reverses along odometry history trail ($v_x = -45\%$) for $600\text{ ms}$.</li>
+        <li><code>SCURVE_ESCAPE (8)</code>: Executes alternating lateral strafe oscillations to free chassis from physical pinch points.</li>
+        <li><code>COMPASS_PIVOT (9)</code>: High-rate yaw rotation to align chassis with magnetic home heading.</li>
+        <li><code>WALL_FOLLOW (10)</code>: Maintains a constant $200\text{ mm}$ lateral distance to contour walls.</li>
+        <li><code>IMPACT_REFLEX (11)</code>: Immediate emergency braking triggered within $10\text{ ms}$ if dynamic jerk exceeds $1.8\text{ g}$.</li>
+      </ul>
+    </div>
+
+    <p>
+      To conquer mechanical stiction (the high static friction coefficient of 45-degree rubber Mecanum rollers on smooth flooring), the motor driver applies an automated <strong>Stiction Kick Pulse</strong>: whenever transitioning from a stationary state to motion, motor PWM is boosted to $+45\%$ above target duty for exactly $220\text{ ms}$ before settling to the profiled cruising velocity.
+    </p>
+
+    <!-- Lab 9.5 -->
+    <div class="lab-card">
+      <span class="lab-badge">Hands-On Laboratory 9.5</span>
+      <h4>Autonomous FSM State Transitions &amp; Stiction Kick Verification</h4>
+      <ol>
+        <li>Review <code>rover rp2040 cpp/rover_rp2040/autonomy.h</code> lines 180&ndash;250.</li>
+        <li>Run the unit tests covering the FSM transitions:
+          <pre><code>python -m unittest tests/test_rover_modules.py -k TestAutonomyFSM</code></pre>
+        </li>
+        <li>Verify that when obstacle distance drops below $350\text{ mm}$, the FSM immediately drops out of <code>AUTO_CRUISE_CLEAR</code> into <code>AUTO_THINKING_SCAN</code>, and upon stall detection triggers the <code>AUTO_SCURVE_ESCAPE</code> routine.</li>
+      </ol>
+    
+        <div class="lab-completion-wrap">
+          <label class="lab-check-container">
+            <input type="checkbox" class="lab-checkbox" data-lab="9.5">
+            <span class="checkmark"></span>
+            Mark Laboratory 9.5 Complete
+          </label>
+        </div>
+      </div>
+  </section>
+</article>
+
+<!-- ==============================================================================
+     CHAPTER 10
+     ============================================================================== -->
+<article class="chapter-block" id="chapter-10">
+  <h2 class="chapter-title">
+    <span class="ch-badge">Chapter 10</span>
+    End-to-End Cyberdeck-to-Rover Integration, Biomimetic Physical AI &amp; Cosmic Epistemology
+  </h2>
+
+  <p>
+    We have journeyed from the microsecond scheduling of PIO silicon state machines to the biophysics of acoustic localization and the distributed coordination of wireless networks. In this final chapter, we assemble the complete cybernetic organism. 
+  </p>
+  <p>
+    We map the full-stack signal path connecting the operator's voice utterance to wheel torque, present the master Bill of Materials and wiring matrix, execute the multi-layer test suite that guarantees rock-solid physical stability, synthesize the biomimetic principles of embodied intelligence, and conclude with a cosmic reflection on the role of physical computing in humanity's epistemological journey toward Technological Heaven.
+  </p>
+
+  <!-- MINI-CHAPTER 10.1 -->
+  <section class="mini-chapter" id="mini-10-1">
+    <h3 class="mini-chapter-title">10.1 Full-Stack Signal Path: Handheld S3 Remote / Cyberdeck to Physical Kinematics</h3>
+    
+    <p>
+      The complete Feynman AI Workbench and Rover architecture operates as a distributed cybernetic nervous system across four physical tiers:
+    </p>
+
+    <pre><code>========================================================================================
+                      DISTRIBUTED END-TO-END SIGNAL ARCHITECTURE
+========================================================================================
+
+  [ OPERATOR SPEECH / GESTURE / JOYSTICK ]
+                 │
+                 ▼
+  [ TIER 1: CYBERDECK & S3 REMOTE INTERACTION ]
+  • Handheld Remote: Makerfabs MaTouch 3.16 (ESP32-S3 @ 240MHz, 320x820 ST7701S RGB LCD)
+  • Edge Node: Waveshare ESP32-S3-Zero (Dual INMP441 mics, TinyUSB HID trigger, PTT)
+  • Action: S3-Zero captures voice onset -> fires Ctrl+Alt+Shift+W USB HID keystroke
+                 │
+                 ▼ (Native USB-C CDC / 16kHz PCM Audio & HID)
+  [ TIER 2: NODE A (LOCAL COGNITIVE BRIDGE - RASPBERRY PI 4B @ 192.168.0.106) ]
+  • Memory Cgroup: Strictly bounded < 450 MB RAM
+  • Daemons: `hid_wake_daemon.py` + `xiaozhi_pi_agent.py`
+  • Low-Latency ASR: Audio streamed to Groq Whisper Large v3 Turbo (577 ms latency)
+  • Tool Calling: Utterance "strafe left" decoded into structured command `[ROVER: STRAFE_L]`
+                 │
+                 ▼ (MCP-over-WebSocket: ws://192.168.0.111:8000/ws/xiaozhi-peer)
+  [ TIER 3: NODE B (MASTER WORKBENCH HUB - LUBUNTU i3 HOST @ 192.168.0.111) ]
+  • Central Federation Hub: `xiaozhi_federation_mcp.py` + Nginx Reverse Proxy
+  • Reasoning Brain: Groq Llama-3.3-70B / Gemini 2.5 Flash with automatic key failover
+  • Persistent Memory: `federation_memory.db` (SQLite WAL multi-turn shared context)
+  • Kinematic Routing: Commands dispatched to ESP-NOW radio relay
+                 │
+                 ▼ (2.4 GHz ESP-NOW Action Frames, <2.5ms RTT, 50 Hz Update)
+  [ TIER 4: MECANUM ROVER AUTONOMIC CHASSIS ]
+  • Radio Bridge: ESP32-C3 coprocessor validates ESP-NOW packet -> drives 40-LED ring
+  • High-Speed Link: 921,600-Baud UART0 with CRC16-CCITT framing
+  • Master Real-Time Controller: Waveshare RP2040-Zero (Dual-Core M0+ @ 133MHz)
+    - Core 0: 100 Hz Madgwick AHRS, 50 Hz 12-state FSM, 20 kHz PWM H-Bridge driver
+    - Core 1: Non-blocking dual VL53L0X I2C polling, radar gating, watchdog
+  • Kinematic Execution: 4 Mecanum wheels generate holonomic vector translation
+========================================================================================</code></pre>
+
+    <!-- Lab 10.1 -->
+    <div class="lab-card">
+      <span class="lab-badge">Hands-On Laboratory 10.1</span>
+      <h4>Full-Stack End-to-End Latency Tracing</h4>
+      <ol>
+        <li>Start audio capture on the S3-Zero while logging timestamps on the Pi 4B bridge:
+          <pre><code>python nodes/pi4b-bridge/test_pi4b_bridge.py -k test_voice_command_dispatch</code></pre>
+        </li>
+        <li>Measure the timing across each hop: Voice onset $\to$ Groq Whisper transcription ($318\text{ ms}$) $\to$ MCP WebSocket dispatch ($12\text{ ms}$) $\to$ ESP-NOW transmission ($2.2\text{ ms}$) $\to$ RP2040 PWM motor assert ($0.5\text{ ms}$).</li>
+        <li>Verify that total glass-to-wheel physical actuation latency remains strictly beneath $450\text{ ms}$.</li>
+      </ol>
+    
+        <div class="lab-completion-wrap">
+          <label class="lab-check-container">
+            <input type="checkbox" class="lab-checkbox" data-lab="10.1">
+            <span class="checkmark"></span>
+            Mark Laboratory 10.1 Complete
+          </label>
+        </div>
+      </div>
+  </section>
+
+  <!-- MINI-CHAPTER 10.2 -->
+  <section class="mini-chapter" id="mini-10-2">
+    <h3 class="mini-chapter-title">10.2 Complete Hardware Bill of Materials (BOM) &amp; Master Wiring/Pinout Reference</h3>
+    
+    <p>
+      Every silicon component, sensor module, and bus line in the production build has been selected to minimize energy consumption, eliminate thermal drift, and prevent ground-loop interference.
+    </p>
+
+    <div class="spec-table-wrap">
+      <table class="spec-table">
+        <thead>
+          <tr>
+            <th>Subsystem</th>
+            <th>Component Part</th>
+            <th>Key Specifications</th>
+            <th>Power Rail &amp; Current</th>
+            <th>Bus Interface &amp; Pin Connections</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Main Rover MCU</strong></td>
+            <td>Waveshare RP2040-Zero</td>
+            <td>Dual ARM Cortex-M0+ @ 133MHz, 2MB Flash, 264KB SRAM</td>
+            <td>5V VSYS (BEC), ~45 mA</td>
+            <td><code>GP0/1</code> UART0, <code>GP2/3</code> I2C1, <code>GP4/5</code> PIO, <code>GP6/7</code> XSHUT</td>
+          </tr>
+          <tr>
+            <td><strong>Radio &amp; LED Bridge</strong></td>
+            <td>ESP32-C3 Mini (LOLIN)</td>
+            <td>Single-core RISC-V @ 160MHz, 4MB Flash, Wi-Fi/BLE</td>
+            <td>5V BEC, ~95 mA</td>
+            <td><code>GPIO 20/21</code> UART0, <code>GPIO 5</code> WS2812 Out</td>
+          </tr>
+          <tr>
+            <td><strong>Acoustic Array</strong></td>
+            <td>3x INMP441 MEMS</td>
+            <td>Omnidirectional, 24-bit I2S, 61 dBA SNR</td>
+            <td>3.3V Regulated, ~4.5 mA</td>
+            <td><code>GP4</code> SCK, <code>GP5</code> WS, <code>GP28</code> SD0, <code>GP29</code> SD1</td>
+          </tr>
+          <tr>
+            <td><strong>Laser Ranging</strong></td>
+            <td>2x ST VL53L0X ToF</td>
+            <td>940 nm VCSEL laser, 2 m range, sub-mm resolution</td>
+            <td>3.3V Sensor Rail, ~38 mA</td>
+            <td><code>GP2/3</code> I2C1 (400 kHz), <code>GP6/7</code> XSHUT (Addresses 0x32, 0x33)</td>
+          </tr>
+          <tr>
+            <td><strong>Presence Radar</strong></td>
+            <td>HLK-LD2402 24GHz mmWave</td>
+            <td>24 GHz FMCW, micro-motion breathing detection</td>
+            <td>5V Rail, ~75 mA</td>
+            <td><code>GP27</code> Digital OUT (Interrupt), UART to Pi 3B+</td>
+          </tr>
+          <tr>
+            <td><strong>Inertial AHRS</strong></td>
+            <td>MPU6050 + QMC5883L</td>
+            <td>6-DoF IMU ($\pm 2000^\circ/\text{s}, \pm 4\text{g}$) + 3-axis Mag</td>
+            <td>3.3V Sensor Rail, ~6.5 mA</td>
+            <td><code>GP2/3</code> I2C1 (Address 0x68 and 0x0D)</td>
+          </tr>
+          <tr>
+            <td><strong>Bioluminescent Ring</strong></td>
+            <td>40x WS2812B RGB Strip</td>
+            <td>5050 SMD LEDs, 800 kHz NZR data protocol</td>
+            <td>5V BEC, capped &lt; 0.65 A</td>
+            <td>Driven by C3 <code>GPIO 5</code> via 74AHCT125 Level Shifter</td>
+          </tr>
+          <tr>
+            <td><strong>Motor Drivers</strong></td>
+            <td>Dual L9110S / TB6612FNG</td>
+            <td>4x H-Bridges driving N20 micro gearmotors</td>
+            <td>7.4V 2S LiPo Rail, ~1.2 A peak</td>
+            <td><code>GP8-15</code> 20 kHz Hardware PWM (Slices 4, 5, 6, 7)</td>
+          </tr>
+          <tr>
+            <td><strong>Handheld Remote</strong></td>
+            <td>Makerfabs MaTouch 3.16</td>
+            <td>ESP32-S3, 320x820 ST7701S RGB LCD, QMI8658 IMU</td>
+            <td>3.7V 1200mAh LiPo, ~180 mA</td>
+            <td>SPI2 + 16-bit RGB bus (Never touch GPIO 0!)</td>
+          </tr>
+          <tr>
+            <td><strong>Edge HID Node</strong></td>
+            <td>Waveshare ESP32-S3-Zero</td>
+            <td>Dual LX7 @ 240MHz, 4MB Flash, 2MB PSRAM</td>
+            <td>5V USB-C, ~65 mA</td>
+            <td><code>GPIO 4/5/6</code> I2S Dual-Mic, <code>GPIO 0/1</code> PTT, TinyUSB HID</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Lab 10.2 -->
+    <div class="lab-card">
+      <span class="lab-badge">Hands-On Laboratory 10.2</span>
+      <h4>Power Distribution &amp; Common Ground Impedance Check</h4>
+      <ol>
+        <li>Measure the resistance between the RP2040 GND pin, ESP32-C3 GND, and the battery negative terminal using a 4-wire Kelvin milliohmmeter.</li>
+        <li>Confirm that resistance is $< 0.05\ \Omega$, preventing ground-bounce noise during motor high-current PWM switching.</li>
+        <li>Measure the 5V Clean Logic rail during a full-speed 4-motor forward acceleration. Verify that voltage dip is $< 80\text{ mV}$, well above the brown-out reset threshold of $4.65\text{ V}$.</li>
+      </ol>
+    
+        <div class="lab-completion-wrap">
+          <label class="lab-check-container">
+            <input type="checkbox" class="lab-checkbox" data-lab="10.2">
+            <span class="checkmark"></span>
+            Mark Laboratory 10.2 Complete
+          </label>
+        </div>
+      </div>
+  </section>
+
+  <!-- MINI-CHAPTER 10.3 -->
+  <section class="mini-chapter" id="mini-10-3">
+    <h3 class="mini-chapter-title">10.3 Comprehensive Verification &amp; Unit Test Suite Architecture</h3>
+    
+    <p>
+      An architecture is only as dependable as its automated verification suite. Our codebase enforces a four-layer verification hierarchy totaling <strong>68 standalone unit tests</strong> and <strong>12 ROS2 layer integration tests</strong> (totaling 80 verified tests across all hardware and software modules) that can be executed across developer workstations and CI runners:
+    </p>
+
+    <div class="spec-table-wrap">
+      <table class="spec-table">
+        <thead>
+          <tr>
+            <th>Layer</th>
+            <th>Test Suite Module</th>
+            <th>Passed</th>
+            <th>Key Verification Coverage</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Layer 1: Real-Time Rover</strong></td>
+            <td><code>tests/test_rover_modules.py</code></td>
+            <td><strong>35 / 35</strong></td>
+            <td>CRC16-CCITT framing, 7-state parser, Mecanum kinematics, stiction kick ($220\text{ ms}, +45\%$), MPU6050 jerk calculation, dynamic motion gating ($0.045\text{ g}$), dual VL53L0X 5-sample median filter, collision braking.</td>
+          </tr>
+          <tr>
+            <td><strong>Layer 1 (ROS2): Kinematic Layer</strong></td>
+            <td><code>ros2/test_ros2_layer.py</code></td>
+            <td><strong>12 / 12</strong></td>
+            <td>ROS2 Twist-to-wheel translation, polar histogram sector mapping, audio wake-word routing, and WebSocket telemetry bridging.</td>
+          </tr>
+          <tr>
+            <td><strong>Layer 2: Local Pi Bridge</strong></td>
+            <td><code>nodes/pi4b-bridge/test_pi4b_bridge.py</code></td>
+            <td><strong>17 / 17</strong></td>
+            <td>TinyUSB HID event dispatch, PTT non-blocking state machine, cgroup memory bounds ($&lt; 450\text{ MB}$), emergency RNDIS network failover, voice-to-rover command serial formatting.</td>
+          </tr>
+          <tr>
+            <td><strong>Layer 3: Cloud Provider Router</strong></td>
+            <td><code>shared/providers/test_providers.py</code></td>
+            <td><strong>8 / 8</strong></td>
+            <td>Groq Whisper Large v3 Turbo transcription ($577\text{ ms}$ live latency), Gemini 2.5 Flash LLM routing, automatic HTTP 429 quota key rotation (primary $\to$ backup $\to$ Groq Llama 3.3).</td>
+          </tr>
+          <tr>
+            <td><strong>Layer 4: MCP Federation Hub</strong></td>
+            <td><code>federation/workbench-bridge/test_federation.py</code></td>
+            <td><strong>8 / 8</strong></td>
+            <td>MCP WebSocket protocol handshake, bidirectional RPC (Pi $\leftrightarrow$ Workbench), SQLite WAL persistence, multi-turn agent dialogue generation, binary 16kHz PCM audio turn ingestion.</td>
+          </tr>
+          <tr>
+            <td><strong>Total Verification</strong></td>
+            <td><em>All Production Modules</em></td>
+            <td><strong>80 / 80</strong></td>
+            <td><strong>100% Test Pass Rate (Zero Regression Tolerance)</strong></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>
+      Below is the real-time execution record verifying Layer 4 MCP federation in action:
+    </p>
+    <pre><code>[INFO] [test_federation] Test 1 PASSED: Discovered tools ['ask_peer_xiaozhi', 'sync_shared_memory', 'agent_dialogue_mode', 'get_node_telemetry']
+[INFO] [test_federation] Test 2 PASSED: Peer responded with: [xiaozhi-workbench-test] Processed peer query...
+[INFO] [test_federation] Test 3 PASSED: Hub successfully queried client peer: [xiaozhi-pi] Client response...
+[INFO] [test_federation] Test 4 PASSED: Verified SQLite persistence (row ID 1)
+[INFO] [test_federation] Test 5 PASSED: 4-turn dialogue generated, persisted, and broadcast over WebSocket (1920B frames)
+[INFO] [test_federation] Test 6 PASSED: Ingested raw binary PCM frame without protocol disruption
+[INFO] [test_federation] Test 7 PASSED: Telemetry read successfully: CPU=0.0%, RAM=6648.71MB
+[INFO] [test_federation] Test 8 PASSED: Database cleanly unlinked with zero connection/handle leaks
+[INFO] ALL TESTS COMPLETED: 8/8 PASSED</code></pre>
+
+    <!-- Lab 10.3 -->
+    <div class="lab-card">
+      <span class="lab-badge">Hands-On Laboratory 10.3</span>
+      <h4>Complete Multi-Tier Regression Suite Execution</h4>
+      <ol>
+        <li>Run the complete test suite from the project root in a single compound command:
+          <pre><code>python -m unittest discover -s Desktop/rover/tests && \
+python -m unittest discover -s Desktop/rover/ros2 && \
+python -m unittest discover -s xiaozhi_dual_architecture/nodes/pi4b-bridge && \
+python xiaozhi_dual_architecture/federation/workbench-bridge/test_federation.py</code></pre>
+        </li>
+        <li>Verify that all tests terminate with status code <code>0</code> and zero failures.</li>
+      </ol>
+    
+        <div class="lab-completion-wrap">
+          <label class="lab-check-container">
+            <input type="checkbox" class="lab-checkbox" data-lab="10.3">
+            <span class="checkmark"></span>
+            Mark Laboratory 10.3 Complete
+          </label>
+        </div>
+      </div>
+  </section>
+
+  <!-- MINI-CHAPTER 10.4 -->
+  <section class="mini-chapter" id="mini-10-4">
+    <h3 class="mini-chapter-title">10.4 Biomimicry &amp; Embodied Intelligence Synthesis</h3>
+    
+    <p>
+      For decades, mainstream artificial intelligence treated intelligence as disembodied symbol manipulation&mdash;an isolated Turing machine evaluating mathematical tokens in an idealized abstract universe. However, 3.8 billion years of organic evolution reveal that real biological intelligence is fundamentally <strong>embodied, situated, and morphologically computed</strong>.
+    </p>
+
+    <div class="callout callout-biomimetic">
+      <strong>Von Uexk&uuml;ll’s <em>Umwelt</em> &amp; Gibson’s Ecological Affordances</strong>
+      <p>
+        In the early 20th century, theoretical biologist <strong>Jakob von Uexk&uuml;ll</strong> demonstrated that an animal does not inhabit an objective Newtonian reality. Instead, each organism perceives a tailored sensory bubble&mdash;its <em>Umwelt</em>&mdash;sculpted by the physical bandpass of its receptors. A tick perceives only the thermal gradient of mammalian blood and the chemical signature of butyric acid; a bat perceives the high-frequency echo-delay topography of cave walls.
+      </p>
+      <p>
+        Our Mecanum rover possesses its own distinct <em>Umwelt</em>: it perceives the world not as RGB pixels, but as a dynamic vector space of acoustic phase deltas ($\Delta \tau$), time-of-flight photon delays, microwave Doppler frequencies, and inertial jerk forces. As psychologist <strong>J.J. Gibson</strong> posited in his theory of <em>Ecological Affordances</em>, perception exists solely to guide action. A doorway is not perceived as an abstract geometric quadrilateral; it is perceived as an "affordance for forward translation."
+      </p>
+    </div>
+
+    <p>
+      Furthermore, our Mecanum chassis exemplifies <strong>Morphological Computation</strong>:
+    </p>
+    <ul style="margin-left: 1.5rem; margin-bottom: 1.25rem;">
+      <li><strong>Mechanical Kinematic Mixing:</strong> The $45^\circ$ passive rollers compute vector transformations physically. By rotating wheels in opposite directions, the chassis translates laterally without turning&mdash;a mechanical computation that requires zero software floating-point cycles.</li>
+      <li><strong>Compliant Passive Dynamics:</strong> Just as an insect leg employs the elastic protein <em>resilin</em> (achieving $97\%$ energy recovery) to absorb ground impact passively before neural signals can reach its thoracic ganglion, our stiction kick pulse and high-inertia wheel geometry dissipate mechanical shocks naturally, shielding silicon processors from real-time overloads.</li>
+      <li><strong>Central Pattern Generators (CPGs):</strong> The 12-state autonomy FSM mirrors biological sub-cortical neural circuits, maintaining cyclic cruising and escape gaits autonomously while higher cognitive layers (cloud LLMs) remain dormant until unexpected spatial anomalies occur.</li>
+    </ul>
+
+    <!-- Lab 10.4 -->
+    <div class="lab-card">
+      <span class="lab-badge">Hands-On Laboratory 10.4</span>
+      <h4>Ecological Affordance Testing in Cluttered Terrain</h4>
+      <ol>
+        <li>Construct a maze corridor with narrowing choke-points ($350\text{ mm}$ down to $220\text{ mm}$).</li>
+        <li>Place the rover at the entrance in autonomous mode (<code>AUTO_CRUISE_CLEAR</code>).</li>
+        <li>Record its behavioral transitions as it navigates the constriction. Observe how morphological roller compliance prevents wedge-locking, and how the sub-cortical FSM smoothly drops from Cruise $\to$ Cautious Creep $\to$ Lateral S-Curve without querying cloud cognitive models.</li>
+      </ol>
+    
+        <div class="lab-completion-wrap">
+          <label class="lab-check-container">
+            <input type="checkbox" class="lab-checkbox" data-lab="10.4">
+            <span class="checkmark"></span>
+            Mark Laboratory 10.4 Complete
+          </label>
+        </div>
+      </div>
+  </section>
+
+  <!-- MINI-CHAPTER 10.5 -->
+  <section class="mini-chapter" id="mini-10-5">
+    <h3 class="mini-chapter-title">10.5 Epilogue: From Workbench Cyberdecks to Technological Heaven</h3>
+    
+    <p>
+      Why do we build physical cyberdecks, solder microcontroller buses, and write assembly state machines in an era where massive cloud data centers can generate billion-parameter text with a single API request?
+    </p>
+    <p>
+      In <em>The Beginning of Infinity</em>, physicist <strong>David Deutsch</strong> articulates the core principle of epistemic optimism: <em>all evils are caused by a lack of knowledge, and problems are soluble given the right explanations</em>. Software copilots trapped behind glowing flat-panel screens remain voyeurs of the physical world. They can describe thermodynamic laws, yet they cannot tighten a loose screw, probe an unstable oscilloscope trace, or navigate an earthquake-collapsed building to locate a trapped survivor.
+    </p>
+
+    <div class="callout callout-cosmic">
+      <strong>The Teleology of Physical AI: Toward Technological Heaven</strong>
+      <p>
+        Historian <strong>Yuval Noah Harari</strong> traces how human progress is defined by metabolic transitions: from the somatic energy of foraging hunter-gatherers, to the domesticated beasts of the agrarian era, to the fossil combustion of the industrial age. We are now crossing the threshold into the <strong>Cognitive-Metabolic Transition</strong>&mdash;where physical matter is infused with autonomous computational agency.
+      </p>
+      <p>
+        In sci-fi literature, such as Liu Cixin’s <em>Three-Body Problem</em>, civilizations face the silent terror of the Fermi Paradox&mdash;the vast, dark cosmos where fragile intelligence risks extinction against cosmic indifference. The antidote to this cosmic silence is the construction of <strong>Technological Heaven</strong>: a teleological horizon where clean, decentralized energy, molecular manufacturing, biomimetic robotics, and distributed intelligence liberate sentient life from involuntary suffering, physical frailty, and planetary confinement.
+      </p>
+      <p>
+        Every time you solder an I2C pull-up resistor on your workbench, program a deterministic PIO state machine, or teach an autonomous Mecanum rover to follow your voice through acoustic phase interference, you are not merely assembling hobbyist electronics. You are laying a foundational stone in the physical scaffolding of the future. You are giving intelligence hands, ears, and wheels. 
+      </p>
+      <p style="margin-bottom: 0; font-weight: 600; color: #00f0ff;">
+        The workbench is the crucible of the infinite. Keep building.
+      </p>
+    </div>
+
+    <!-- Master Capstone Lab -->
+    <div class="lab-card">
+      <span class="lab-badge">Master Capstone Laboratory 10.5</span>
+      <h4>End-to-End Voice-to-Rover Kinematic Execution</h4>
+      <ol>
+        <li>Power up all hardware nodes: S3-Zero, Raspberry Pi 4B, RP2040 Mecanum Rover, and ESP32-C3 radio bridge.</li>
+        <li>Confirm all services are active:
+          <pre><code>systemctl status workbench-hub.service</code></pre>
+        </li>
+        <li>Press the Push-To-Talk switch on the S3-Zero and command: <em>"Rover, advance two meters and report obstacles."</em></li>
+        <li>Observe the unified system response:
+          <ul style="margin-top: 0.25rem;">
+            <li>TinyUSB fires keystroke waking the speech pipeline.</li>
+            <li>Groq Whisper transcribes speech in $318\text{ ms}$.</li>
+            <li>Workbench Hub processes intent and sends kinematic frame over ESP-NOW.</li>
+            <li>WS2812 ring transitions to Emerald Breathing (Cruise).</li>
+            <li>RP2040 executes the stiction kick pulse, driving the 4 Mecanum wheels smoothly forward.</li>
+            <li>Front ToF and 24GHz mmWave radar actively guard against obstacles.</li>
+            <li>3D WebGL dashboard streams real-time log-odds clearance map.</li>
+          </ul>
+        </li>
+      </ol>
+    
+        <div class="lab-completion-wrap">
+          <label class="lab-check-container">
+            <input type="checkbox" class="lab-checkbox" data-lab="10.5">
+            <span class="checkmark"></span>
+            Mark Laboratory 10.5 Complete
+          </label>
+        </div>
+      </div>
+  </section>
+</article>
+
+</section>
+<!-- ==============================================================================
+     END OF PART 3 (CHAPTERS 8, 9, 10)
+     ============================================================================== -->

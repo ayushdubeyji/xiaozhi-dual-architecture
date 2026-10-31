@@ -1,0 +1,302 @@
+{
+  "1": {
+    "title": "Physical AI Hardware & Cyberdeck Subsystems",
+    "minis": [
+      {
+        "num": "1.1",
+        "id": "mini-1-1",
+        "title": "The Embodied Cyberdeck Paradigm &amp; Hardware Coexistence Matrix"
+      },
+      {
+        "num": "1.2",
+        "id": "mini-1-2",
+        "title": "Raspberry Pi 4B Display/DPI-1 Hardware Engineering &amp; Sitronix ST7265 Driver"
+      },
+      {
+        "num": "1.3",
+        "id": "mini-1-3",
+        "title": "MP3302 Step-Up Boost Backlight Physics &amp; Quadratic PWM Dimming"
+      },
+      {
+        "num": "1.4",
+        "id": "mini-1-4",
+        "title": "Active Thermal Management &amp; 2GB RAM Power Budgeting"
+      },
+      {
+        "num": "1.5",
+        "id": "mini-1-5",
+        "title": "Wayland / Labwc Touchscreen UX, Sleep Architecture &amp; Custom Desktop Daemons"
+      }
+    ]
+  },
+  "2": {
+    "title": "Embedded Vision: IMX519 C++20 Lockless Pipeline",
+    "minis": [
+      {
+        "num": "2.1",
+        "id": "mini-2-1",
+        "title": "Embedded Vision Architecture &amp; The 60FPS Low-Latency Challenge"
+      },
+      {
+        "num": "2.2",
+        "id": "mini-2-2",
+        "title": "Cache-Line-Aligned Lockless SPSC Ring Buffers (std::memory_order)"
+      },
+      {
+        "num": "2.3",
+        "id": "mini-2-3",
+        "title": "ARMv8-A 128-Bit NEON SIMD Processing, Laplacian Focus Scoring &amp; Bilinear Downscaling"
+      },
+      {
+        "num": "2.4",
+        "id": "mini-2-4",
+        "title": "Cortex-A72 CPU Core Affinity Pinning &amp; Thread Isolation"
+      },
+      {
+        "num": "2.5",
+        "id": "mini-2-5",
+        "title": "Zero-Copy DRM/KMS &amp; SDL2 Rendering Architecture"
+      }
+    ]
+  },
+  "3": {
+    "title": "Waveshare ESP32-S3-Zero Hardware Coprocessor",
+    "minis": [
+      {
+        "num": "3.1",
+        "id": "mini-3-1",
+        "title": "Waveshare ESP32-S3-Zero Hardware Architecture"
+      },
+      {
+        "num": "3.2",
+        "id": "mini-3-2",
+        "title": "Complete Pinout Matrix &amp; Compile-Time _Static_assert Bus Isolation"
+      },
+      {
+        "num": "3.3",
+        "id": "mini-3-3",
+        "title": "Dual I2S MEMS Microphones &amp; esp-sr 2-Mic Beamforming in PSRAM"
+      },
+      {
+        "num": "3.4",
+        "id": "mini-3-4",
+        "title": "Tactile Control Interfaces: Dual-Axis Analog Joystick &amp; Salvaged Mouse Rotary Encoder"
+      },
+      {
+        "num": "3.5",
+        "id": "mini-3-5",
+        "title": "Composite TinyUSB Architecture (HID, CDC Audio &amp; RNDIS NAT Failover)"
+      }
+    ]
+  },
+  "4": {
+    "title": "Linux Input, Cgroups & Wayland Touch HUD",
+    "minis": [
+      {
+        "num": "4.1",
+        "id": "mini-4-1",
+        "title": "The Linux Input Subsystem &amp; EVIOCGRAB Architecture"
+      },
+      {
+        "num": "4.2",
+        "id": "mini-4-2",
+        "title": "Zero-Leak Keystroke Interception &amp; The Async Event Loop"
+      },
+      {
+        "num": "4.3",
+        "id": "mini-4-3",
+        "title": "Memory-Constrained Daemon Engineering (MemoryMax=450M Cgroups)"
+      },
+      {
+        "num": "4.4",
+        "id": "mini-4-4",
+        "title": "Dynamic USB RNDIS Routing &amp; Metric Manipulation"
+      },
+      {
+        "num": "4.5",
+        "id": "mini-4-5",
+        "title": "Non-Blocking Floating Wayland PTT Touch Overlays"
+      }
+    ]
+  },
+  "5": {
+    "title": "Sub-600ms Groq Whisper ASR & Multi-Brain Router",
+    "minis": [
+      {
+        "num": "5.1",
+        "id": "mini-5-1",
+        "title": "High-Speed Acoustic Framing &amp; Ogg/Opus Bitstream Packaging"
+      },
+      {
+        "num": "5.2",
+        "id": "mini-5-2",
+        "title": "Sub-600ms Cloud ASR: Groq Whisper LPU vs. OpenAI Fallback"
+      },
+      {
+        "num": "5.3",
+        "id": "mini-5-3",
+        "title": "Dynamic Multi-Brain LLM Architecture &amp; Key Failover Chains"
+      },
+      {
+        "num": "5.4",
+        "id": "mini-5-4",
+        "title": "Voice-Driven Cognitive Brain Switching &amp; Intent Extraction"
+      },
+      {
+        "num": "5.5",
+        "id": "mini-5-5",
+        "title": "Streaming Audio Synthesis &amp; Hot-Swappable Configuration"
+      }
+    ]
+  },
+  "6": {
+    "title": "Federated Multi-Agent Swarm (MCP over WebSockets)",
+    "minis": [
+      {
+        "num": "6.1",
+        "id": "mini-6-1",
+        "title": "The Inter-Agent Federation Topology (Node A &harr; Node B)"
+      },
+      {
+        "num": "6.2",
+        "id": "mini-6-2",
+        "title": "Model Context Protocol (MCP) JSON-RPC 2.0 over Persistent WebSockets"
+      },
+      {
+        "num": "6.3",
+        "id": "mini-6-3",
+        "title": "Asynchronous Tool Invocation &amp; ask_peer_xiaozhi Delegation"
+      },
+      {
+        "num": "6.4",
+        "id": "mini-6-4",
+        "title": "SQLite WAL Shared Episodic Memory &amp; State Synchronization"
+      },
+      {
+        "num": "6.5",
+        "id": "mini-6-5",
+        "title": "Bounded Autonomous Multi-Agent Dialogue (agent_dialogue_mode)"
+      }
+    ]
+  },
+  "7": {
+    "title": "RP2040 Omnidirectional Mecanum Kinematics",
+    "minis": [
+      {
+        "num": "7.1",
+        "id": "mini-7-1",
+        "title": "Omnidirectional Mecanum Kinematics &amp; Velocity Vector Mixing"
+      },
+      {
+        "num": "7.2",
+        "id": "mini-7-2",
+        "title": "Coulomb Stiction Physics &amp; Breakaway Impulse Tuning (+40% Mass)"
+      },
+      {
+        "num": "7.3",
+        "id": "mini-7-3",
+        "title": "Jerk-Gated IMU Dead-Reckoning Odometry"
+      },
+      {
+        "num": "7.4",
+        "id": "mini-7-4",
+        "title": "Closed-Loop Stuck Detection &amp; The 12-State Autonomy Engine"
+      },
+      {
+        "num": "7.5",
+        "id": "mini-7-5",
+        "title": "20 kHz H-Bridge PWM Drive &amp; Edge Pinout on RP2040-Zero"
+      }
+    ]
+  },
+  "8": {
+    "title": "Acoustic Spatial Audition & Direction-of-Arrival",
+    "minis": [
+      {
+        "num": "8.1",
+        "id": "mini-8-1",
+        "title": "RP2040 PIO State-Machine I2S Capture for the 3-Mic Equilateral Array"
+      },
+      {
+        "num": "8.2",
+        "id": "mini-8-2",
+        "title": "GCC-PHAT &amp; TDOA Acoustic Localization vs Ormia ochracea Tympanal Coupling"
+      },
+      {
+        "num": "8.3",
+        "id": "mini-8-3",
+        "title": "Dual VL53L0X Time-of-Flight XSHUT Address Multiplexing &amp; Sensor Geometry"
+      },
+      {
+        "num": "8.4",
+        "id": "mini-8-4",
+        "title": "HLK-LD2402 24GHz mmWave Radar Presence Gating &amp; Range Segmentation"
+      },
+      {
+        "num": "8.5",
+        "id": "mini-8-5",
+        "title": "400 kHz I2C1 IMU/Magnetometer Sensor Fusion &amp; Dead Reckoning"
+      }
+    ]
+  },
+  "9": {
+    "title": "ESP-NOW Radio Bridge & 3D Spatial Occupancy Mapping",
+    "minis": [
+      {
+        "num": "9.1",
+        "id": "mini-9-1",
+        "title": "ESP-NOW to 921,600-Baud UART0 Bridge with CRC16-CCITT Framing"
+      },
+      {
+        "num": "9.2",
+        "id": "mini-9-2",
+        "title": "40-LED WS2812 Bioluminescent Telemetry Ring &amp; Autonomy Annunciator"
+      },
+      {
+        "num": "9.3",
+        "id": "mini-9-3",
+        "title": "Bayesian Log-Odds Occupancy Grid Mapping &amp; Ray-Marching Free-Space Clearing"
+      },
+      {
+        "num": "9.4",
+        "id": "mini-9-4",
+        "title": "80ms Low-Latency Snapshot Camera Proxy &amp; WebRTC/HTTP Pipeline"
+      },
+      {
+        "num": "9.5",
+        "id": "mini-9-5",
+        "title": "12-State Autonomous Navigation Finite State Machine"
+      }
+    ]
+  },
+  "10": {
+    "title": "System Integration, Biomimicry & Cosmic Epistemology",
+    "minis": [
+      {
+        "num": "10.1",
+        "id": "mini-10-1",
+        "title": "Full-Stack Signal Path: Handheld S3 Remote / Cyberdeck to Physical Kinematics"
+      },
+      {
+        "num": "10.2",
+        "id": "mini-10-2",
+        "title": "Complete Hardware Bill of Materials (BOM) &amp; Master Wiring/Pinout Reference"
+      },
+      {
+        "num": "10.3",
+        "id": "mini-10-3",
+        "title": "Comprehensive Verification &amp; Unit Test Suite Architecture"
+      },
+      {
+        "num": "10.4",
+        "id": "mini-10-4",
+        "title": "Biomimicry &amp; Embodied Intelligence Synthesis"
+      },
+      {
+        "num": "10.5",
+        "id": "mini-10-5",
+        "title": "Epilogue: From Workbench Cyberdecks to Technological Heaven"
+      }
+    ]
+  }
+}
