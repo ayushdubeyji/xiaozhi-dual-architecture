@@ -394,6 +394,10 @@ class TestS3FlasherAndResourceManagement(unittest.TestCase):
         bridge.datagram_received(b"LED_PATTERN 1 60 100\n", ("127.0.0.1", 12345))
         mock_serial.write_command.assert_called_with("CMD:LED_PATTERN 1 60 100")
 
+        # JSON LED_PATTERN
+        bridge.datagram_received(b'{"cmd": "led_pattern", "pattern": 3, "hue": 120, "speed": 150}', ("127.0.0.1", 12345))
+        mock_serial.write_command.assert_called_with("CMD:LED_PATTERN 3 120 150")
+
     def test_touch_haptic_monitor(self):
         mock_serial = MagicMock()
         monitor = hid_wake_daemon.TouchHapticMonitor(serial_bridge=mock_serial)
@@ -407,6 +411,9 @@ class TestS3FlasherAndResourceManagement(unittest.TestCase):
         monitor.trigger_touch_haptic()
         mock_serial.write_command.assert_not_called()
 
+        # Tracking ID state test
+        self.assertEqual(monitor._last_tracking_id, -1)
+
     def test_settings_gui_structure(self):
         settings_file = self.base_dir / "settings_gui.py"
         self.assertTrue(settings_file.exists(), "settings_gui.py must exist")
@@ -417,6 +424,8 @@ class TestS3FlasherAndResourceManagement(unittest.TestCase):
         self.assertIn("CMD:LED_PATTERN", content)
         self.assertIn("Cosmic Nebula", content)
         self.assertIn("Cyberpunk Aurora", content)
+        self.assertIn("haptic_scale", content)
+        self.assertIn("_on_haptic_slider_changed", content)
 
     def test_haptic_curves_math(self):
         # Index 1: Exponential decay kick

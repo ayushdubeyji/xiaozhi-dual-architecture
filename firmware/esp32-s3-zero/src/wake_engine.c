@@ -2,6 +2,7 @@
 #include "audio_capture.h"
 #include "board_pins.h"
 #include "usb_hid_trigger.h"
+#include "haptics_engine.h"
 #include "esp_log.h"
 #include "esp_heap_caps.h"
 #include "driver/gpio.h"
@@ -57,12 +58,14 @@ static void ptt_monitor_task(void *pvParameters)
                     ESP_LOGI(TAG, ">>> PTT BUTTON PRESSED <<<");
                     s_is_streaming = true;
                     s_silence_ticks = 0;
+                    haptics_play(HAPTIC_PRESS, 190, 25);
                     usb_hid_send_ptt_keystroke(true);
                     ws2812_set_mode(LED_MODE_PTT);
                     if (s_user_cb) s_user_cb(WAKE_EVENT_PTT_DOWN, NULL, 0);
                 } else {
                     ESP_LOGI(TAG, ">>> PTT BUTTON RELEASED <<<");
                     s_is_streaming = false;
+                    haptics_play(HAPTIC_RELEASE, 140, 20);
                     usb_hid_send_ptt_keystroke(false);
                     ws2812_set_mode(LED_MODE_IDLE);
                     if (s_user_cb) s_user_cb(WAKE_EVENT_PTT_UP, NULL, 0);

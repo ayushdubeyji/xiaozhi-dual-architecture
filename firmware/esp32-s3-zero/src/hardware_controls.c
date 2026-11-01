@@ -106,7 +106,6 @@ esp_err_t hardware_controls_init(void)
     };
     ESP_ERROR_CHECK(gpio_config(&sw_cfg));
 
-    ws2812_set_mode(LED_MODE_DRIVE);
     return ESP_OK;
 }
 
@@ -227,7 +226,7 @@ static void hardware_controls_task(void *pvParameters)
             if (ptt_active_via_sw) {
                 ptt_active_via_sw = false;
                 usb_hid_send_ptt_keystroke(false);
-                ws2812_set_mode(s_current_mode == CONTROL_MODE_DRIVE ? LED_MODE_DRIVE : LED_MODE_GIMBAL);
+                ws2812_set_mode(s_current_mode == CONTROL_MODE_DRIVE ? LED_MODE_IDLE : LED_MODE_GIMBAL);
                 ESP_LOGI(TAG, "Joystick SW Released -> PTT Stop");
             } else {
                 // Short click (< 450ms)
@@ -235,7 +234,7 @@ static void hardware_controls_task(void *pvParameters)
                     // Double Click: Center Gimbal
                     // Restore original mode since single click previously toggled it
                     s_current_mode = (s_current_mode == CONTROL_MODE_DRIVE) ? CONTROL_MODE_GIMBAL : CONTROL_MODE_DRIVE;
-                    ws2812_set_mode(s_current_mode == CONTROL_MODE_DRIVE ? LED_MODE_DRIVE : LED_MODE_GIMBAL);
+                    ws2812_set_mode(s_current_mode == CONTROL_MODE_DRIVE ? LED_MODE_IDLE : LED_MODE_GIMBAL);
                     s_pan_us = GIMBAL_CENTER_US;
                     s_tilt_us = GIMBAL_CENTER_US;
                     ESP_LOGI(TAG, "Joystick SW Double-Click -> Gimbal Reset (1500, 1500), Mode restored to %s",
@@ -257,7 +256,7 @@ static void hardware_controls_task(void *pvParameters)
                     // Single Click: Toggle Mode
                     last_click_ms = now_ms;
                     s_current_mode = (s_current_mode == CONTROL_MODE_DRIVE) ? CONTROL_MODE_GIMBAL : CONTROL_MODE_DRIVE;
-                    ws2812_set_mode(s_current_mode == CONTROL_MODE_DRIVE ? LED_MODE_DRIVE : LED_MODE_GIMBAL);
+                    ws2812_set_mode(s_current_mode == CONTROL_MODE_DRIVE ? LED_MODE_IDLE : LED_MODE_GIMBAL);
                     ESP_LOGI(TAG, "Joystick SW Click -> Mode: %s",
                              s_current_mode == CONTROL_MODE_DRIVE ? "DRIVE" : "GIMBAL");
                     if (tud_cdc_connected()) {

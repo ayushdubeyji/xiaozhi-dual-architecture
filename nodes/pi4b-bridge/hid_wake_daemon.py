@@ -233,14 +233,22 @@ class RoverUdpBridge(asyncio.DatagramProtocol):
                             text = "CMD:" + text
                     logger.info(f"Bridging UDP command from {addr}: {text}")
                     self.serial_bridge.write_command(text)
-                elif text.startswith("{") and "haptic" in text.lower():
+                elif text.startswith("{"):
                     payload = json.loads(text)
-                    eff = payload.get("effect", payload.get("effect_id", 1))
-                    inten = payload.get("intensity", 180)
-                    dur = payload.get("duration", payload.get("duration_ms", 15))
-                    cmd = f"CMD:HAPTIC {eff} {inten} {dur}"
-                    logger.info(f"Bridging UDP JSON haptic from {addr}: {cmd}")
-                    self.serial_bridge.write_command(cmd)
+                    if "haptic" in text.lower() or "effect" in payload:
+                        eff = payload.get("effect", payload.get("effect_id", 1))
+                        inten = payload.get("intensity", 180)
+                        dur = payload.get("duration", payload.get("duration_ms", 15))
+                        cmd = f"CMD:HAPTIC {eff} {inten} {dur}"
+                        logger.info(f"Bridging UDP JSON haptic from {addr}: {cmd}")
+                        self.serial_bridge.write_command(cmd)
+                    elif "led" in text.lower() or "pattern" in payload:
+                        pat = payload.get("pattern", payload.get("pattern_id", 0))
+                        hue = payload.get("hue", payload.get("hue_offset", 0))
+                        speed = payload.get("speed", 100)
+                        cmd = f"CMD:LED_PATTERN {pat} {hue} {speed}"
+                        logger.info(f"Bridging UDP JSON LED pattern from {addr}: {cmd}")
+                        self.serial_bridge.write_command(cmd)
                 else:
                     logger.debug(f"Received non-A7 UDP datagram len={len(data)} from {addr}")
             except Exception as e:
@@ -423,13 +431,18 @@ class TouchHapticMonitor:
         self.device: Optional[evdev.InputDevice] = None
         self._last_haptic_time = 0.0
         self._haptic_cooldown = 0.025  # 25ms minimum cooldown to prevent jitter flood
+        self._last_tracking_id = -1
 
     def find_touch_device_path(self) -> Optional[str]:
         if not EVDEV_AVAILABLE:
             return None
 
-        # Check by-path symlinks first
-        by_path_matches = glob.glob("/dev/input/by-path/*goodix*") + glob.glob("/dev/input/by-path/*touch*")
+        # Check by-path symlinks first (Goodix touch on I2C bus)
+        by_path_matches = (
+            glob.glob("/dev/input/by-path/*goodix*")
+            + glob.glob("/dev/input/by-path/*touch*")
+            + glob.glob("/dev/input/by-path/*i2c*")
+        )
         for p in by_path_matches:
             if os.path.exists(p):
                 return p
@@ -490,7 +503,11 @@ class TouchHapticMonitor:
                             self.trigger_touch_haptic()
                     elif event.type == ecodes.EV_ABS and event.code == getattr(ecodes, 'ABS_MT_TRACKING_ID', 57):
                         if event.value != -1:
-                            self.trigger_touch_haptic()
+                            if event.value != self._last_tracking_id:
+                                self._last_tracking_id = event.value
+                                self.trigger_touch_haptic()
+                        else:
+                            self._last_tracking_id = -1
 
             except (OSError, IOError) as ex:
                 logger.debug(f"Touch device {dev_path} disconnected or error: {ex}")

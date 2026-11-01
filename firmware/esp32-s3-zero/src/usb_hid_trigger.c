@@ -291,10 +291,20 @@ static void process_host_command(const char *cmd_line)
         int effect_id = 1;
         int intensity = 180;
         int duration_ms = 0;
-        int matched = sscanf(cmd_line + 10, "%d %d %d", &effect_id, &intensity, &duration_ms);
+        char clean_args[64];
+        strncpy(clean_args, cmd_line + 10, sizeof(clean_args) - 1);
+        clean_args[sizeof(clean_args) - 1] = '\0';
+        for (char *p = clean_args; *p; p++) {
+            if (*p == ',' || *p == ':') *p = ' ';
+        }
+        int matched = sscanf(clean_args, "%d %d %d", &effect_id, &intensity, &duration_ms);
         if (matched >= 1) {
-            if (intensity <= 0 || intensity > 255) intensity = 180;
-            haptics_play((haptic_effect_t)effect_id, (uint8_t)intensity, (uint16_t)duration_ms);
+            if (effect_id == 0) {
+                haptics_stop();
+            } else {
+                if (intensity <= 0 || intensity > 255) intensity = 180;
+                haptics_play((haptic_effect_t)effect_id, (uint8_t)intensity, (uint16_t)duration_ms);
+            }
             char ack[48];
             snprintf(ack, sizeof(ack), "HAPTIC_ACK:%d,%d,%d\n", effect_id, intensity, duration_ms);
             tud_cdc_write_str(ack);
@@ -304,7 +314,13 @@ static void process_host_command(const char *cmd_line)
         int pattern_id = 0;
         int hue_offset = 0;
         int speed = 100;
-        int matched = sscanf(cmd_line + 15, "%d %d %d", &pattern_id, &hue_offset, &speed);
+        char clean_args[64];
+        strncpy(clean_args, cmd_line + 15, sizeof(clean_args) - 1);
+        clean_args[sizeof(clean_args) - 1] = '\0';
+        for (char *p = clean_args; *p; p++) {
+            if (*p == ',' || *p == ':') *p = ' ';
+        }
+        int matched = sscanf(clean_args, "%d %d %d", &pattern_id, &hue_offset, &speed);
         if (matched >= 1) {
             ws2812_set_pattern((uint8_t)pattern_id, (int16_t)hue_offset, (uint16_t)speed);
             char ack[48];

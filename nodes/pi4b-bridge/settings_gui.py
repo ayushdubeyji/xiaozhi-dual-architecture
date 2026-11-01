@@ -131,21 +131,25 @@ class SettingsApp:
                              font=("Inter", 10, "bold"), fg="#00f5d4", bg="#0b132b", padx=10, pady=4)
         card.pack(fill="x", padx=14, pady=3)
 
-        # Haptic Feedback Row
+        # Haptic Feedback Row (Slider: Off / Subtle / Crisp / Strong)
         h_row = tk.Frame(card, bg="#0b132b")
         h_row.pack(fill="x", pady=2)
 
         h_lbl = tk.Label(h_row, text="Haptic Intensity:", font=("Inter", 9, "bold"), fg="#e0e1dd", bg="#0b132b")
-        h_lbl.pack(side="left", padx=(0, 8))
+        h_lbl.pack(side="left", padx=(0, 6))
 
-        self.haptic_var = tk.IntVar(value=2)  # Default Crisp (index 2)
-        for idx, (name, val) in enumerate(HAPTIC_LEVELS):
-            rb = tk.Radiobutton(h_row, text=name, variable=self.haptic_var, value=idx,
-                                command=self._on_haptic_changed, font=("Inter", 8, "bold"),
-                                bg="#0b132b", fg="#ffffff", selectcolor="#1c2541", activebackground="#0b132b")
-            rb.pack(side="left", padx=4)
+        self.haptic_val_lbl = tk.Label(h_row, text="Crisp (180)", font=("Inter", 8, "bold"), fg="#00f5d4", bg="#1c2541", padx=6, pady=1)
+        self.haptic_val_lbl.pack(side="left", padx=(0, 6))
 
-        test_btn = tk.Button(h_row, text="💥 Test Haptic Tick", font=("Inter", 8, "bold"),
+        self.haptic_scale = tk.Scale(
+            h_row, from_=0, to=3, orient="horizontal", width=12, sliderlength=24,
+            showvalue=False, command=self._on_haptic_slider_changed,
+            bg="#0b132b", fg="#ffffff", activebackground="#7209b7", highlightthickness=0
+        )
+        self.haptic_scale.set(2)  # Default Crisp (index 2)
+        self.haptic_scale.pack(side="left", fill="x", expand=True, padx=4)
+
+        test_btn = tk.Button(h_row, text="💥 Test Haptic", font=("Inter", 8, "bold"),
                              bg="#7209b7", fg="#ffffff", activebackground="#f72585", padx=8, pady=2,
                              command=self._test_haptic)
         test_btn.pack(side="right", padx=4)
@@ -193,11 +197,14 @@ class SettingsApp:
                             command=trigger_screen_off)
         off_btn.pack(side="left", expand=True, fill="x")
 
-    def _on_haptic_changed(self):
-        idx = self.haptic_var.get()
-        self.haptic_intensity = HAPTIC_LEVELS[idx][1]
-        if self.haptic_intensity > 0:
-            send_s3_command(f"CMD:HAPTIC 1 {self.haptic_intensity} 15\n")
+    def _on_haptic_slider_changed(self, val):
+        idx = int(float(val))
+        if 0 <= idx < len(HAPTIC_LEVELS):
+            name, intensity = HAPTIC_LEVELS[idx]
+            self.haptic_intensity = intensity
+            self.haptic_val_lbl.configure(text=f"{name} ({intensity})")
+            if self.haptic_intensity > 0:
+                send_s3_command(f"CMD:HAPTIC 1 {self.haptic_intensity} 15\n")
 
     def _test_haptic(self):
         send_s3_command(f"CMD:HAPTIC 1 {self.haptic_intensity} 15\n")
