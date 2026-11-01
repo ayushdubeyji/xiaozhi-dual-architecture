@@ -1,0 +1,11 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=S3 Update
+Comment=Flash ESP32-S3 ROM Download Mode and Restore Acoustic Node
+Exec=/bin/bash -c "/home/ayush/xiaozhi_dual_architecture/nodes/pi4b-bridge/s3_flash.sh; echo ''; read -p 'Press Enter to close...' -n1"
+Icon=system-software-update
+Terminal=true
+Categories=Development;Utility;
+StartupNotify=false
+X-KeepTerminal=true

@@ -14,10 +14,12 @@ ExecStart=/home/ayush/xiaozhi_dual_architecture/nodes/pi4b-bridge/venv/bin/pytho
 Restart=always
 RestartSec=3
 
-# Low-Memory CGroup Resource Constraints
+# Low-Memory CGroup Resource Constraints & Priority Scheduling
 MemoryHigh=380M
 MemoryMax=450M
 CPUQuota=150%
+CPUWeight=800
+Nice=-5
 
 StandardOutput=journal
 StandardError=journal

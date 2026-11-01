@@ -23,6 +23,11 @@
 #include "lwip/lwip_napt.h"
 #endif
 
+// System & RTC registers for software download boot
+#include "esp_system.h"
+#include "soc/soc.h"
+#include "soc/rtc_cntl_reg.h"
+
 static const char *TAG = "usb_hid_trigger";
 
 #define WIFI_FAILOVER_SSID      "Ayush"
@@ -31,19 +36,14 @@ static const char *TAG = "usb_hid_trigger";
 #define ITF_NUM_HID             0
 #define ITF_NUM_CDC             1
 #define ITF_NUM_CDC_DATA        2
-#define ITF_NUM_NET             3
-#define ITF_NUM_NET_DATA        4
-#define ITF_NUM_TOTAL           5
+#define ITF_NUM_TOTAL           3
 
 // Hardware-valid endpoint map for ESP32-S3 DWC2 OTG:
-// OUT endpoints MUST be <= 4. IN endpoints are distinct and can go up to 5+.
+// Hardware supports EP0 + 4 IN endpoints (0x81..0x84) + 4 OUT endpoints (0x01..0x04)
 #define EPNUM_HID               0x81
 #define EPNUM_CDC_NOTIF         0x82
 #define EPNUM_CDC_OUT           0x02
 #define EPNUM_CDC_IN            0x83
-#define EPNUM_NET_NOTIF         0x84
-#define EPNUM_NET_OUT           0x03
-#define EPNUM_NET_IN            0x85
 
 #ifndef CFG_TUD_HID_EP_BUFSIZE
 #define CFG_TUD_HID_EP_BUFSIZE  16
@@ -51,16 +51,19 @@ static const char *TAG = "usb_hid_trigger";
 #ifndef CFG_TUD_CDC_EP_BUFSIZE
 #define CFG_TUD_CDC_EP_BUFSIZE  64
 #endif
-#ifndef CFG_TUD_NET_ENDPOINT_SIZE
-#define CFG_TUD_NET_ENDPOINT_SIZE 64
-#endif
 
 /* =========================================================================
- * 1. TinyUSB Descriptors (HID Keyboard + CDC ACM + RNDIS Net)
+ * 1. TinyUSB Descriptors (HID Keyboard + HID Mouse + CDC ACM Stream)
  * ========================================================================= */
 
+enum {
+    REPORT_ID_KEYBOARD = 1,
+    REPORT_ID_MOUSE = 2
+};
+
 static const uint8_t hid_report_descriptor[] = {
-    TUD_HID_REPORT_DESC_KEYBOARD()
+    TUD_HID_REPORT_DESC_KEYBOARD( HID_REPORT_ID(REPORT_ID_KEYBOARD) ),
+    TUD_HID_REPORT_DESC_MOUSE( HID_REPORT_ID(REPORT_ID_MOUSE) )
 };
 
 uint8_t const *tud_hid_descriptor_report_cb(uint8_t instance)
@@ -88,20 +91,17 @@ void tud_hid_set_report_cb(uint8_t instance, uint8_t report_id, hid_report_type_
     (void)bufsize;
 }
 
-#define CONFIG_TOTAL_LEN  (TUD_CONFIG_DESC_LEN + TUD_HID_DESC_LEN + TUD_CDC_DESC_LEN + TUD_RNDIS_DESC_LEN)
+#define CONFIG_TOTAL_LEN  (TUD_CONFIG_DESC_LEN + TUD_HID_DESC_LEN + TUD_CDC_DESC_LEN)
 
 static const uint8_t desc_configuration[] = {
     // Config number, interface count, string index, total length, attribute, power in mA
     TUD_CONFIG_DESCRIPTOR(1, ITF_NUM_TOTAL, 0, CONFIG_TOTAL_LEN, TUSB_DESC_CONFIG_ATT_REMOTE_WAKEUP, 500),
 
-    // Interface 0: HID Keyboard
-    TUD_HID_DESCRIPTOR(ITF_NUM_HID, 4, HID_ITF_PROTOCOL_KEYBOARD, sizeof(hid_report_descriptor), EPNUM_HID, CFG_TUD_HID_EP_BUFSIZE, 10),
+    // Interface 0: HID Composite (Keyboard + Mouse)
+    TUD_HID_DESCRIPTOR(ITF_NUM_HID, 4, HID_ITF_PROTOCOL_NONE, sizeof(hid_report_descriptor), EPNUM_HID, CFG_TUD_HID_EP_BUFSIZE, 10),
 
     // Interface 1 & 2: CDC ACM Stream
-    TUD_CDC_DESCRIPTOR(ITF_NUM_CDC, 5, EPNUM_CDC_NOTIF, 8, EPNUM_CDC_OUT, EPNUM_CDC_IN, CFG_TUD_CDC_EP_BUFSIZE),
-
-    // Interface 3 & 4: RNDIS Network
-    TUD_RNDIS_DESCRIPTOR(ITF_NUM_NET, 6, EPNUM_NET_NOTIF, 8, EPNUM_NET_OUT, EPNUM_NET_IN, CFG_TUD_NET_ENDPOINT_SIZE)
+    TUD_CDC_DESCRIPTOR(ITF_NUM_CDC, 5, EPNUM_CDC_NOTIF, 8, EPNUM_CDC_OUT, EPNUM_CDC_IN, CFG_TUD_CDC_EP_BUFSIZE)
 };
 
 static const tusb_desc_device_t desc_device = {
@@ -113,8 +113,8 @@ static const tusb_desc_device_t desc_device = {
     .bDeviceProtocol    = MISC_PROTOCOL_IAD,
     .bMaxPacketSize0    = CFG_TUD_ENDPOINT0_SIZE,
     .idVendor           = 0x303A,
-    .idProduct          = 0x4002,
-    .bcdDevice          = 0x0100,
+    .idProduct          = 0x4003,
+    .bcdDevice          = 0x0101,
     .iManufacturer      = 0x01,
     .iProduct           = 0x02,
     .iSerialNumber      = 0x03,
@@ -210,6 +210,18 @@ static void led_anim_task(void *pvParameters)
                 vTaskDelay(pdMS_TO_TICKS(80));
                 break;
 
+            case LED_MODE_DRIVE:
+                led_strip_set_pixel(s_led_strip, 0, 0, 200, 60); // Emerald Green
+                led_strip_refresh(s_led_strip);
+                vTaskDelay(pdMS_TO_TICKS(100));
+                break;
+
+            case LED_MODE_GIMBAL:
+                led_strip_set_pixel(s_led_strip, 0, 0, 180, 255); // Cyan/Ice Blue
+                led_strip_refresh(s_led_strip);
+                vTaskDelay(pdMS_TO_TICKS(100));
+                break;
+
             case LED_MODE_ERROR:
                 led_strip_set_pixel(s_led_strip, 0, 255, 0, 0);
                 led_strip_refresh(s_led_strip);
@@ -222,7 +234,7 @@ static void led_anim_task(void *pvParameters)
 }
 
 /* =========================================================================
- * 3. HID Keyboard Keystroke Dispatcher (Ctrl+Shift+Alt+W & Ctrl+Shift+Alt+P)
+ * 3. HID Keyboard & Mouse Keystroke / Scroll Dispatcher
  * ========================================================================= */
 
 #define MODIFIER_CTRL_SHIFT_ALT (KEYBOARD_MODIFIER_LEFTCTRL | KEYBOARD_MODIFIER_LEFTSHIFT | KEYBOARD_MODIFIER_LEFTALT)
@@ -235,11 +247,11 @@ void usb_hid_send_wake_keystroke(void)
     }
 
     uint8_t keycode[6] = {HID_KEY_W, 0, 0, 0, 0, 0};
-    tud_hid_keyboard_report(0, MODIFIER_CTRL_SHIFT_ALT, keycode);
+    tud_hid_keyboard_report(REPORT_ID_KEYBOARD, MODIFIER_CTRL_SHIFT_ALT, keycode);
     vTaskDelay(pdMS_TO_TICKS(40));
 
     uint8_t empty_keys[6] = {0};
-    tud_hid_keyboard_report(0, 0, empty_keys);
+    tud_hid_keyboard_report(REPORT_ID_KEYBOARD, 0, empty_keys);
     ESP_LOGI(TAG, "Sent Wake Keystroke: Ctrl+Shift+Alt+W to host Pi");
 }
 
@@ -249,13 +261,19 @@ void usb_hid_send_ptt_keystroke(bool pressed)
 
     if (pressed) {
         uint8_t keycode[6] = {HID_KEY_P, 0, 0, 0, 0, 0};
-        tud_hid_keyboard_report(0, MODIFIER_CTRL_SHIFT_ALT, keycode);
+        tud_hid_keyboard_report(REPORT_ID_KEYBOARD, MODIFIER_CTRL_SHIFT_ALT, keycode);
         ESP_LOGI(TAG, "Sent PTT Keydown: Ctrl+Shift+Alt+P");
     } else {
         uint8_t empty_keys[6] = {0};
-        tud_hid_keyboard_report(0, 0, empty_keys);
+        tud_hid_keyboard_report(REPORT_ID_KEYBOARD, 0, empty_keys);
         ESP_LOGI(TAG, "Sent PTT Keyup");
     }
+}
+
+void usb_hid_send_mouse_scroll(int8_t scroll_step)
+{
+    if (!tud_hid_ready()) return;
+    tud_hid_mouse_report(REPORT_ID_MOUSE, 0, 0, 0, scroll_step, 0);
 }
 
 /* =========================================================================
@@ -335,6 +353,21 @@ static void process_host_command(const char *cmd_line)
         espnow_rover_send_command(0, 0, 0, 0x08, 0); // E-stop button flag
         tud_cdc_write_str("ROVER:ESTOP_TRIGGERED\n");
         tud_cdc_write_flush();
+    } else if (strncmp(cmd_line, "CMD:ROVER_GIMBAL", 16) == 0) {
+        int pan = 1500, tilt = 1500;
+        if (sscanf(cmd_line + 16, "%d %d", &pan, &tilt) >= 2) {
+            char gcmd[48];
+            snprintf(gcmd, sizeof(gcmd), "GIMBAL_ACK:%d,%d\n", pan, tilt);
+            tud_cdc_write_str(gcmd);
+            tud_cdc_write_flush();
+        }
+    } else if (strcmp(cmd_line, "CMD:BOOTLOADER") == 0 || strcmp(cmd_line, "s3_bootloader") == 0) {
+        ESP_LOGW(TAG, "Rebooting into ROM download mode via RTC_CNTL_FORCE_DOWNLOAD_BOOT");
+        tud_cdc_write_str("ACK:BOOTLOADER\n");
+        tud_cdc_write_flush();
+        vTaskDelay(pdMS_TO_TICKS(150));
+        REG_WRITE(RTC_CNTL_OPTION1_REG, RTC_CNTL_FORCE_DOWNLOAD_BOOT);
+        esp_restart();
     } else if (strcmp(cmd_line, "CMD:PING") == 0) {
         tud_cdc_write_str("PONG:S3_OK\n");
         tud_cdc_write_flush();
@@ -482,9 +515,18 @@ static uint8_t compute_crc(const void *data, size_t len)
 
 static void espnow_recv_cb(const esp_now_recv_info_t *recv_info, const uint8_t *data, int len)
 {
-    if (len == sizeof(rover_telem_packet_t)) {
-        const rover_telem_packet_t *telem = (const rover_telem_packet_t *)data;
-        if (telem->magic == ROVER_PACKET_MAGIC) {
+    if (len >= 12 && data[0] == ROVER_PACKET_MAGIC) {
+        if (len == sizeof(rover_pkt_t)) {
+            const rover_pkt_t *ack = (const rover_pkt_t *)data;
+            if (tud_cdc_connected()) {
+                char out[128];
+                snprintf(out, sizeof(out), "ROVER_ACK:{\"seq\":%u,\"type\":%u,\"mode\":%u,\"speed\":%u,\"flags\":%u,\"heading\":%d}\n",
+                         ack->seq, ack->type, ack->mode, ack->speed, ack->flags, ack->arg);
+                tud_cdc_write_str(out);
+                tud_cdc_write_flush();
+            }
+        } else if (len == sizeof(rover_telem_packet_t)) {
+            const rover_telem_packet_t *telem = (const rover_telem_packet_t *)data;
             uint8_t exp_crc = compute_crc(telem, sizeof(rover_telem_packet_t) - 1);
             if (telem->crc == exp_crc && tud_cdc_connected()) {
                 char out[128];
@@ -528,15 +570,17 @@ esp_err_t espnow_rover_init(void)
 
 esp_err_t espnow_rover_send_command(int8_t vx, int8_t vy, int8_t omega, uint8_t buttons, uint8_t flags)
 {
-    rover_cmd_packet_t pkt;
+    rover_pkt_t pkt;
     pkt.magic = ROVER_PACKET_MAGIC;
-    pkt.seq = s_rover_seq++;
-    pkt.vx = vx;
-    pkt.vy = vy;
-    pkt.omega = omega;
-    pkt.buttons = buttons;
+    pkt.type = (vx == 0 && vy == 0 && omega == 0 && !(flags & 0x01)) ? 4 : 3; // 4=STOP, 3=DRIVE
+    pkt.x = vy;     // Strafe: -100 (left) .. +100 (right)
+    pkt.y = vx;     // Fwd/Rev: -100 (back) .. +100 (fwd)
+    pkt.z = omega;  // Rotation: -100 (CCW) .. +100 (CW)
+    pkt.speed = 70; // 70% duty ceiling
+    pkt.mode = 1;   // MODE_NORMAL
     pkt.flags = flags;
-    pkt.crc = compute_crc(&pkt, sizeof(pkt) - 1);
+    pkt.arg = 0;
+    pkt.seq = s_rover_seq++;
 
     esp_err_t ret = esp_now_send(s_broadcast_mac, (const uint8_t *)&pkt, sizeof(pkt));
     if (ret != ESP_OK) {
@@ -592,6 +636,9 @@ esp_err_t usb_hid_trigger_init(void)
 {
     ESP_LOGI(TAG, "Initializing TinyUSB Composite Stack & WS2812 Telemetry");
 
+    // Clear force download boot flag if set from earlier session
+    REG_CLR_BIT(RTC_CNTL_OPTION1_REG, RTC_CNTL_FORCE_DOWNLOAD_BOOT);
+
     // 1. Initialize WS2812 RGB LED & Animation Task
     ws2812_init();
     xTaskCreatePinnedToCore(led_anim_task, "led_anim", 2048, NULL, 3, NULL, 0);
@@ -613,10 +660,7 @@ esp_err_t usb_hid_trigger_init(void)
     // 3. Initialize ESP-NOW Rover Gateway (Requires Wi-Fi to be started!)
     espnow_rover_init();
 
-    // 4. Initialize USB Network Netif
-    init_usb_netif();
-
-    // 5. Initialize TinyUSB Driver
+    // 4. Initialize TinyUSB Driver
     tinyusb_config_t const tusb_cfg = {
         .device_descriptor = &desc_device,
         .string_descriptor = string_desc_arr,

@@ -8,6 +8,7 @@ import struct
 import unittest
 import asyncio
 from unittest.mock import MagicMock, AsyncMock, patch
+from pathlib import Path
 
 # Ensure pi4b-bridge is on sys.path
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -319,6 +320,53 @@ class TestFastApiEndpoints(unittest.TestCase):
         response = self.client.post("/api/rover/cmd", json={"action": "move", "vx": 0, "vy": 50, "vz": 0, "speed": 50})
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["status"], "dispatched")
+
+
+class TestS3FlasherAndResourceManagement(unittest.TestCase):
+    def setUp(self):
+        self.base_dir = Path(__file__).resolve().parent
+
+    def test_s3_flash_script_structure(self):
+        flash_sh = self.base_dir / "s3_flash.sh"
+        self.assertTrue(flash_sh.exists(), "s3_flash.sh must exist")
+        content = flash_sh.read_text(encoding="utf-8")
+        self.assertIn("CMD:BOOTLOADER", content)
+        self.assertIn("ACK:BOOTLOADER", content)
+        self.assertIn("s3-hid-wake.service", content)
+        self.assertIn("write-flash", content)
+        self.assertIn("0x260000", content)
+        self.assertIn("0x20000", content)
+
+    def test_desktop_entry_structure(self):
+        desktop = self.base_dir / "S3_Update.desktop"
+        self.assertTrue(desktop.exists(), "S3_Update.desktop must exist")
+        content = desktop.read_text(encoding="utf-8")
+        self.assertIn("Type=Application", content)
+        self.assertIn("s3_flash.sh", content)
+        self.assertIn("Terminal=true", content)
+
+    def test_lowprio_build_structure(self):
+        lowprio = self.base_dir / "lowprio-build"
+        self.assertTrue(lowprio.exists(), "lowprio-build must exist")
+        content = lowprio.read_text(encoding="utf-8")
+        self.assertIn("MemoryMax=1200M", content)
+        self.assertIn("CPUQuota=300%", content)
+        self.assertIn("CMAKE_BUILD_PARALLEL_LEVEL=2", content)
+        self.assertIn("systemd-run", content)
+
+    def test_firmware_bundle_binaries(self):
+        fw_dir = self.base_dir / "fw"
+        self.assertTrue(fw_dir.exists(), "fw directory must exist")
+        expected_bins = [
+            "bootloader.bin",
+            "partition-table.bin",
+            "srmodels.bin",
+            "esp32_s3_zero_acoustic_node.bin",
+        ]
+        for b in expected_bins:
+            p = fw_dir / b
+            self.assertTrue(p.exists(), f"Binary {b} must exist in fw/")
+            self.assertGreater(p.stat().st_size, 0, f"Binary {b} must not be empty")
 
 
 if __name__ == "__main__":

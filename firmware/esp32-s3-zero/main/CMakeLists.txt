@@ -4,6 +4,7 @@ idf_component_register(
         "../src/audio_capture.c"
         "../src/wake_engine.c"
         "../src/usb_hid_trigger.c"
+        "../src/hardware_controls.c"
     INCLUDE_DIRS
         "../include"
         "../src"
@@ -21,4 +22,5 @@ idf_component_register(
         esp_tinyusb
         led_strip
         esp-sr
+        esp_adc
 )

@@ -42,14 +42,12 @@ static void ptt_monitor_task(void *pvParameters)
     while (s_is_running) {
         // Active LOW inputs
         int boot_val = gpio_get_level((gpio_num_t)BOARD_PIN_PTT_BOOT);
-        int ext_val  = gpio_get_level((gpio_num_t)BOARD_PIN_PTT_EXT);
-        bool current_pressed = (boot_val == 0) || (ext_val == 0);
+        bool current_pressed = (boot_val == 0);
 
         if (current_pressed != last_state) {
             vTaskDelay(pdMS_TO_TICKS(20)); // Debounce
             boot_val = gpio_get_level((gpio_num_t)BOARD_PIN_PTT_BOOT);
-            ext_val  = gpio_get_level((gpio_num_t)BOARD_PIN_PTT_EXT);
-            current_pressed = (boot_val == 0) || (ext_val == 0);
+            current_pressed = (boot_val == 0);
 
             if (current_pressed != last_state) {
                 last_state = current_pressed;
@@ -166,9 +164,9 @@ esp_err_t wake_engine_init(wake_engine_cb_t cb)
 
     ESP_LOGI(TAG, "Configuring esp-sr 2-mic AFE Pipeline with PSRAM Allocation");
 
-    // Initialize Push-to-Talk GPIOs
+    // Initialize Push-to-Talk GPIO (BOOT button)
     gpio_config_t ptt_cfg = {
-        .pin_bit_mask = (1ULL << BOARD_PIN_PTT_BOOT) | (1ULL << BOARD_PIN_PTT_EXT),
+        .pin_bit_mask = (1ULL << BOARD_PIN_PTT_BOOT),
         .mode = GPIO_MODE_INPUT,
         .pull_up_en = GPIO_PULLUP_ENABLE,
         .pull_down_en = GPIO_PULLDOWN_DISABLE,

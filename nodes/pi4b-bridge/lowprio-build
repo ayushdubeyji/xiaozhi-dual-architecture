@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+# ==============================================================================
+# lowprio-build: Low-Priority Build Wrapper for Raspberry Pi 4B (2GB)
+# ==============================================================================
+# Prevents memory choking and UI freezes on Raspberry Pi 4B (2GB) during heavy
+# builds (cmake, ninja, gcc, idf, rust, etc.).
+#
+# Constraints enforced:
+#  - MemoryMax=1200M (protects 800MB RAM for OS, Wayland, and Xiaozhi agent)
+#  - CPUQuota=300% (caps CPU at 3 cores maximum, keeping 1 core 100% available)
+#  - CPUWeight=20 (deprioritizes build tasks under CPU contention)
+#  - IOWeight=20 (deprioritizes disk / SD card IO)
+#  - nice -n 15 (low process scheduler priority)
+#  - ionice -c3 (idle IO scheduler class)
+#  - CMAKE_BUILD_PARALLEL_LEVEL=2 / MAKEFLAGS="-j2" / NINJAFLAGS="-j2"
+# ==============================================================================
+
+set -euo pipefail
+
+if [ "$#" -eq 0 ]; then
+    echo "Usage: lowprio-build <command> [arguments...]" >&2
+    echo "Example: lowprio-build cmake --build build -j2" >&2
+    exit 1
+fi
+
+# Limit concurrent compile jobs to 2 (protects 2GB RAM from GCC parallel explosions)
+export CMAKE_BUILD_PARALLEL_LEVEL=2
+export MAKEFLAGS="-j2"
+export NINJAFLAGS="-j2"
+
+# Execute inside transient systemd scope with cgroup resource limits
+if command -v systemd-run >/dev/null 2>&1; then
+    exec systemd-run --scope --quiet \
+        -p MemoryMax=1200M \
+        -p CPUQuota=300% \
+        -p CPUWeight=20 \
+        -p IOWeight=20 \
+        nice -n 15 \
+        ionice -c3 \
+        "$@"
+else
+    exec nice -n 15 ionice -c3 "$@"
+fi

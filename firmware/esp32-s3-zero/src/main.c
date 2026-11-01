@@ -88,7 +88,15 @@ void app_main(void)
         return;
     }
 
-    // 6. Spawn Core 0 & Core 1 Real-Time Tasks
+    // 6. Initialize Hardware Controls (Joystick ADC1: VRx=GP2, VRy=GP3, SW=GP1 | Encoder: A=GP14, B=GP15)
+    ret = hardware_controls_init();
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "FATAL: Failed to init hardware controls: %s", esp_err_to_name(ret));
+        return;
+    }
+    hardware_controls_start_task();
+
+    // 7. Spawn Core 0 & Core 1 Real-Time Tasks
     wake_engine_start_tasks();
 
     ESP_LOGI(TAG, "System running. Ready for WakeNet keyword, PTT trigger, CDC audio, and ESP-NOW rover commands.");

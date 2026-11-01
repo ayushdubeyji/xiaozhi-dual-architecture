@@ -54,7 +54,16 @@ extern "C" {
 #define BOARD_PIN_DISP_MISO     13  /*!< SPI Display Master-In-Slave-Out */
 
 /* =========================================================================
- * 6. COMPILE-TIME PIN COLLISION STATIC ASSERTIONS
+ * 6. HARDWARE JOYSTICK & MOUSE ROTARY ENCODER
+ * ========================================================================= */
+#define BOARD_PIN_JOY_VRX       2   /*!< Analog Joystick VRx (ADC1_CH1) */
+#define BOARD_PIN_JOY_VRY       3   /*!< Analog Joystick VRy (ADC1_CH2) */
+#define BOARD_PIN_JOY_SW        BOARD_PIN_PTT_EXT /*!< Joystick Click Switch (GPIO 1, shared with PTT EXT) */
+#define BOARD_PIN_ENC_A         14  /*!< Mouse Rotary Encoder Phase A (Internal Pull-Up) */
+#define BOARD_PIN_ENC_B         15  /*!< Mouse Rotary Encoder Phase B (Internal Pull-Up) */
+
+/* =========================================================================
+ * 7. COMPILE-TIME PIN COLLISION STATIC ASSERTIONS
  * ========================================================================= */
 
 /* USB PHY Pin Sanity */
@@ -86,6 +95,22 @@ _Static_assert(BOARD_PIN_PTT_BOOT != BOARD_PIN_I2S_BCLK && BOARD_PIN_PTT_BOOT !=
 _Static_assert(BOARD_PIN_PTT_EXT  != BOARD_PIN_I2S_BCLK && BOARD_PIN_PTT_EXT  != BOARD_PIN_I2S_WS && BOARD_PIN_PTT_EXT  != BOARD_PIN_I2S_DIN, "PTT EXT collides with I2S");
 _Static_assert(BOARD_PIN_PTT_BOOT != BOARD_PIN_WS2812   && BOARD_PIN_PTT_EXT  != BOARD_PIN_WS2812, "PTT button collides with WS2812");
 
+/* Joystick & Rotary Encoder Uniqueness & Isolation */
+_Static_assert(BOARD_PIN_JOY_VRX != BOARD_PIN_JOY_VRY, "Joystick VRx and VRy collide");
+_Static_assert(BOARD_PIN_ENC_A   != BOARD_PIN_ENC_B,   "Encoder Phase A and B collide");
+_Static_assert(BOARD_PIN_JOY_VRX != BOARD_PIN_ENC_A && BOARD_PIN_JOY_VRX != BOARD_PIN_ENC_B, "Joystick VRx collides with Encoder");
+_Static_assert(BOARD_PIN_JOY_VRY != BOARD_PIN_ENC_A && BOARD_PIN_JOY_VRY != BOARD_PIN_ENC_B, "Joystick VRy collides with Encoder");
+_Static_assert(BOARD_PIN_JOY_VRX != BOARD_PIN_PTT_BOOT && BOARD_PIN_JOY_VRX != BOARD_PIN_PTT_EXT, "Joystick VRx collides with PTT");
+_Static_assert(BOARD_PIN_JOY_VRY != BOARD_PIN_PTT_BOOT && BOARD_PIN_JOY_VRY != BOARD_PIN_PTT_EXT, "Joystick VRy collides with PTT");
+_Static_assert(BOARD_PIN_ENC_A   != BOARD_PIN_PTT_BOOT && BOARD_PIN_ENC_A   != BOARD_PIN_PTT_EXT, "Encoder A collides with PTT");
+_Static_assert(BOARD_PIN_ENC_B   != BOARD_PIN_PTT_BOOT && BOARD_PIN_ENC_B   != BOARD_PIN_PTT_EXT, "Encoder B collides with PTT");
+_Static_assert(BOARD_PIN_JOY_VRX != BOARD_PIN_WS2812   && BOARD_PIN_JOY_VRY != BOARD_PIN_WS2812,   "Joystick collides with WS2812");
+_Static_assert(BOARD_PIN_ENC_A   != BOARD_PIN_WS2812   && BOARD_PIN_ENC_B   != BOARD_PIN_WS2812,   "Encoder collides with WS2812");
+_Static_assert(BOARD_PIN_JOY_VRX != BOARD_PIN_I2S_BCLK && BOARD_PIN_JOY_VRX != BOARD_PIN_I2S_WS && BOARD_PIN_JOY_VRX != BOARD_PIN_I2S_DIN, "Joystick VRx collides with I2S");
+_Static_assert(BOARD_PIN_JOY_VRY != BOARD_PIN_I2S_BCLK && BOARD_PIN_JOY_VRY != BOARD_PIN_I2S_WS && BOARD_PIN_JOY_VRY != BOARD_PIN_I2S_DIN, "Joystick VRy collides with I2S");
+_Static_assert(BOARD_PIN_ENC_A   != BOARD_PIN_I2S_BCLK && BOARD_PIN_ENC_A   != BOARD_PIN_I2S_WS && BOARD_PIN_ENC_A   != BOARD_PIN_I2S_DIN, "Encoder A collides with I2S");
+_Static_assert(BOARD_PIN_ENC_B   != BOARD_PIN_I2S_BCLK && BOARD_PIN_ENC_B   != BOARD_PIN_I2S_WS && BOARD_PIN_ENC_B   != BOARD_PIN_I2S_DIN, "Encoder B collides with I2S");
+
 /* Reserved SPI2 Display Pin Uniqueness */
 _Static_assert(BOARD_PIN_DISP_DC   != BOARD_PIN_DISP_RST,  "Display DC and RST collide");
 _Static_assert(BOARD_PIN_DISP_DC   != BOARD_PIN_DISP_BLK,  "Display DC and BLK collide");
@@ -104,6 +129,15 @@ _Static_assert(BOARD_PIN_DISP_CS   != BOARD_PIN_DISP_MISO, "Display CS and MISO 
 _Static_assert(BOARD_PIN_DISP_MOSI != BOARD_PIN_DISP_SCK,  "Display MOSI and SCK collide");
 _Static_assert(BOARD_PIN_DISP_MOSI != BOARD_PIN_DISP_MISO, "Display MOSI and MISO collide");
 _Static_assert(BOARD_PIN_DISP_SCK  != BOARD_PIN_DISP_MISO, "Display SCK and MISO collide");
+
+/* Reserved SPI2 Display vs Joystick & Encoder */
+_Static_assert(BOARD_PIN_DISP_DC   != BOARD_PIN_JOY_VRX && BOARD_PIN_DISP_DC   != BOARD_PIN_JOY_VRY && BOARD_PIN_DISP_DC   != BOARD_PIN_ENC_A && BOARD_PIN_DISP_DC   != BOARD_PIN_ENC_B, "Display DC collides with Controls");
+_Static_assert(BOARD_PIN_DISP_RST  != BOARD_PIN_JOY_VRX && BOARD_PIN_DISP_RST  != BOARD_PIN_JOY_VRY && BOARD_PIN_DISP_RST  != BOARD_PIN_ENC_A && BOARD_PIN_DISP_RST  != BOARD_PIN_ENC_B, "Display RST collides with Controls");
+_Static_assert(BOARD_PIN_DISP_BLK  != BOARD_PIN_JOY_VRX && BOARD_PIN_DISP_BLK  != BOARD_PIN_JOY_VRY && BOARD_PIN_DISP_BLK  != BOARD_PIN_ENC_A && BOARD_PIN_DISP_BLK  != BOARD_PIN_ENC_B, "Display BLK collides with Controls");
+_Static_assert(BOARD_PIN_DISP_CS   != BOARD_PIN_JOY_VRX && BOARD_PIN_DISP_CS   != BOARD_PIN_JOY_VRY && BOARD_PIN_DISP_CS   != BOARD_PIN_ENC_A && BOARD_PIN_DISP_CS   != BOARD_PIN_ENC_B, "Display CS collides with Controls");
+_Static_assert(BOARD_PIN_DISP_MOSI != BOARD_PIN_JOY_VRX && BOARD_PIN_DISP_MOSI != BOARD_PIN_JOY_VRY && BOARD_PIN_DISP_MOSI != BOARD_PIN_ENC_A && BOARD_PIN_DISP_MOSI != BOARD_PIN_ENC_B, "Display MOSI collides with Controls");
+_Static_assert(BOARD_PIN_DISP_SCK  != BOARD_PIN_JOY_VRX && BOARD_PIN_DISP_SCK  != BOARD_PIN_JOY_VRY && BOARD_PIN_DISP_SCK  != BOARD_PIN_ENC_A && BOARD_PIN_DISP_SCK  != BOARD_PIN_ENC_B, "Display SCK collides with Controls");
+_Static_assert(BOARD_PIN_DISP_MISO != BOARD_PIN_JOY_VRX && BOARD_PIN_DISP_MISO != BOARD_PIN_JOY_VRY && BOARD_PIN_DISP_MISO != BOARD_PIN_ENC_A && BOARD_PIN_DISP_MISO != BOARD_PIN_ENC_B, "Display MISO collides with Controls");
 
 /* Reserved SPI2 Display vs Audio/USB/PTT Subsystems */
 _Static_assert(BOARD_PIN_DISP_DC   != BOARD_PIN_I2S_BCLK && BOARD_PIN_DISP_DC   != BOARD_PIN_I2S_WS && BOARD_PIN_DISP_DC   != BOARD_PIN_I2S_DIN, "Display DC collides with I2S");

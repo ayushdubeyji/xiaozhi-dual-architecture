@@ -85,18 +85,27 @@ sudo -u "$TARGET_USER" "$VENV_DIR/bin/pip" install --upgrade pip setuptools whee
 sudo -u "$TARGET_USER" "$VENV_DIR/bin/pip" install -r "$SCRIPT_DIR/requirements.txt"
 
 echo "=== [6/6] Installing Desktop Shortcuts & Systemd Services ==="
-# 1. Desktop shortcuts
+# 1. Desktop shortcuts & flashing scripts
 DESKTOP_DIR="$TARGET_HOME/Desktop"
 if [ -d "$DESKTOP_DIR" ]; then
     cp "$SCRIPT_DIR/S3_Internet.desktop" "$DESKTOP_DIR/"
     cp "$SCRIPT_DIR/Xiaozhi_PTT.desktop" "$DESKTOP_DIR/"
-    chown "$TARGET_USER:$TARGET_USER" "$DESKTOP_DIR/S3_Internet.desktop" "$DESKTOP_DIR/Xiaozhi_PTT.desktop"
-    chmod +x "$DESKTOP_DIR/S3_Internet.desktop" "$DESKTOP_DIR/Xiaozhi_PTT.desktop"
+    cp "$SCRIPT_DIR/S3_Update.desktop" "$DESKTOP_DIR/"
+    chown "$TARGET_USER:$TARGET_USER" "$DESKTOP_DIR/S3_Internet.desktop" "$DESKTOP_DIR/Xiaozhi_PTT.desktop" "$DESKTOP_DIR/S3_Update.desktop"
+    chmod +x "$DESKTOP_DIR/S3_Internet.desktop" "$DESKTOP_DIR/Xiaozhi_PTT.desktop" "$DESKTOP_DIR/S3_Update.desktop"
     echo "Desktop shortcuts installed to $DESKTOP_DIR."
 fi
 
-# Ensure s3_internet_toggle.sh is executable
+# Ensure scripts are executable
 chmod +x "$SCRIPT_DIR/s3_internet_toggle.sh"
+chmod +x "$SCRIPT_DIR/s3_flash.sh"
+
+# Install lowprio-build system helper
+if [ -f "$SCRIPT_DIR/lowprio-build" ]; then
+    cp "$SCRIPT_DIR/lowprio-build" /usr/local/bin/lowprio-build
+    chmod +x /usr/local/bin/lowprio-build
+    echo "lowprio-build installed to /usr/local/bin/lowprio-build."
+fi
 
 # 2. Systemd service units
 SYSTEMD_DIR="/etc/systemd/system"

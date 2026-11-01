@@ -17,22 +17,33 @@ typedef enum {
     LED_MODE_STREAMING,    /*!< Audio streaming to Xiaozhi: Pulsing Green (0, 255, 0) */
     LED_MODE_PTT,          /*!< Hardware PTT Active: Amber / Yellow (255, 140, 0) */
     LED_MODE_RNDIS,        /*!< Emergency RNDIS Active: Purple (140, 0, 255) */
+    LED_MODE_DRIVE,        /*!< Physical Joystick Drive Mode: Emerald (0, 255, 80) */
+    LED_MODE_GIMBAL,       /*!< Physical Pan/Tilt Gimbal Mode: Cyan/Violet (0, 200, 255) */
     LED_MODE_ERROR         /*!< Error state: Red (255, 0, 0) */
 } led_mode_t;
 
+typedef enum {
+    CONTROL_MODE_DRIVE = 0,  /*!< Physical Joystick drives rover */
+    CONTROL_MODE_GIMBAL = 1  /*!< Physical Joystick controls Pan/Tilt gimbal */
+} control_mode_t;
+
 /**
- * @brief Mecanum Rover ESP-NOW Control Command Packet.
+ * @brief Mecanum Rover ESP-NOW Standard Control Command Packet (12 bytes).
  */
 typedef struct __attribute__((packed)) {
     uint8_t magic;         /*!< Always 0xA7 */
-    uint8_t seq;           /*!< Rolling packet sequence counter */
-    int8_t  vx;            /*!< Longitudinal velocity (-100 to 100) */
-    int8_t  vy;            /*!< Lateral strafe velocity (-100 to 100) */
-    int8_t  omega;         /*!< Rotational yaw rate (-100 to 100) */
-    uint8_t buttons;       /*!< Bit0: Horn, Bit1: Lights, Bit2: Arm, Bit3: E-Stop */
-    uint8_t flags;         /*!< Mode flags (0x01: Teleop, 0x02: Auto-dock) */
-    uint8_t crc;           /*!< XOR checksum */
-} rover_cmd_packet_t;
+    uint8_t type;          /*!< 3=PKT_DRIVE, 4=PKT_STOP */
+    int8_t  x;             /*!< Strafe: -100 (left) .. +100 (right) */
+    int8_t  y;             /*!< Fwd/Rev: -100 (back) .. +100 (fwd) */
+    int8_t  z;             /*!< Rotation: -100 (CCW) .. +100 (CW) */
+    uint8_t speed;         /*!< Overall speed ceiling: 0 .. 100% */
+    uint8_t mode;          /*!< Drive mode (1=Normal) */
+    uint8_t flags;         /*!< Mode flags (0x01: E-stop) */
+    int16_t arg;           /*!< Target heading or arg */
+    uint16_t seq;          /*!< Rolling packet sequence counter */
+} rover_pkt_t;
+
+typedef rover_pkt_t rover_cmd_packet_t;
 
 /**
  * @brief Mecanum Rover ESP-NOW Telemetry Packet.
@@ -65,6 +76,13 @@ void usb_hid_send_wake_keystroke(void);
  * @param pressed true for keydown, false for keyup.
  */
 void usb_hid_send_ptt_keystroke(bool pressed);
+
+/**
+ * @brief Dispatch USB HID relative mouse wheel vertical scroll to host.
+ *
+ * @param scroll_step Positive = scroll up, Negative = scroll down.
+ */
+void usb_hid_send_mouse_scroll(int8_t scroll_step);
 
 /**
  * @brief Stream clean 16kHz mono PCM audio frames over USB CDC ACM to Pi host.
@@ -120,6 +138,28 @@ esp_err_t espnow_rover_init(void);
  * @return ESP_OK on transmit.
  */
 esp_err_t espnow_rover_send_command(int8_t vx, int8_t vy, int8_t omega, uint8_t buttons, uint8_t flags);
+
+/**
+ * @brief Initialize Hardware Controls (Analog Joystick ADC + Rotary Encoder).
+ *
+ * @return ESP_OK on success.
+ */
+esp_err_t hardware_controls_init(void);
+
+/**
+ * @brief Spawn background hardware control sampling and dispatch task.
+ */
+void hardware_controls_start_task(void);
+
+/**
+ * @brief Get current hardware control mode.
+ */
+control_mode_t hardware_controls_get_mode(void);
+
+/**
+ * @brief Get current Pan/Tilt gimbal pulse widths in microseconds (1000..2000).
+ */
+void hardware_controls_get_gimbal(int *pan_us, int *tilt_us);
 
 #ifdef __cplusplus
 }

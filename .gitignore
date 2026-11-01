@@ -20,6 +20,7 @@ sdkconfig.old
 dependencies.lock
 managed_components/
 *.bin
+!nodes/pi4b-bridge/fw/*.bin
 *.elf
 *.map
 
