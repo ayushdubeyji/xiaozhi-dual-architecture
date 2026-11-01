@@ -307,7 +307,7 @@ static void cdc_rx_task(void *pvParameters)
     size_t line_pos = 0;
 
     while (1) {
-        if (tud_cdc_connected() && tud_cdc_available()) {
+        if (tud_cdc_available()) {
             uint8_t ch;
             while (tud_cdc_read(&ch, 1) == 1) {
                 if (ch == '\n' || ch == '\r') {
@@ -327,6 +327,7 @@ static void cdc_rx_task(void *pvParameters)
 
 static void process_host_command(const char *cmd_line)
 {
+    while (*cmd_line == ' ' || *cmd_line == '\t' || *cmd_line == '\r') cmd_line++;
     ESP_LOGI(TAG, "Received CDC Command: %s", cmd_line);
 
     if (strcmp(cmd_line, "CMD:NET_ENABLE") == 0 || strcmp(cmd_line, "s3_net_on") == 0) {

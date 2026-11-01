@@ -23,6 +23,12 @@ if [ "$#" -eq 0 ]; then
     exit 1
 fi
 
+# Validate active swap >= 1.5GB / 2GB to protect against low-memory build freezing
+SWAP_TOTAL_KB=$(awk '/SwapTotal/ {print $2}' /proc/meminfo 2>/dev/null || echo 0)
+if [ "${SWAP_TOTAL_KB:-0}" -lt 1500000 ]; then
+    echo "WARNING: Low swap detected (${SWAP_TOTAL_KB} kB). Pi 4B 2GB requires ~2GB swap for safe native compilation." >&2
+fi
+
 # Limit concurrent compile jobs to 2 (protects 2GB RAM from GCC parallel explosions)
 export CMAKE_BUILD_PARALLEL_LEVEL=2
 export MAKEFLAGS="-j2"

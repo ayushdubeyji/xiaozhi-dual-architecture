@@ -44,25 +44,38 @@ fi
 BOOTLOADER="${FW_DIR}/bootloader.bin"
 PARTITION_TABLE="${FW_DIR}/partition-table.bin"
 SRMODELS="${FW_DIR}/srmodels.bin"
-APP_BIN="${FW_DIR}/esp32_s3_zero_acoustic_node.bin"
+
+# Detect app binary with fallback: prefer firmware.bin, then esp32_s3_zero_acoustic_node.bin
+if [ -f "${FW_DIR}/firmware.bin" ]; then
+    APP_BIN="${FW_DIR}/firmware.bin"
+elif [ -f "${FW_DIR}/esp32_s3_zero_acoustic_node.bin" ]; then
+    APP_BIN="${FW_DIR}/esp32_s3_zero_acoustic_node.bin"
+else
+    APP_BIN=""
+fi
 
 MISSING=0
-for f in "$BOOTLOADER" "$PARTITION_TABLE" "$SRMODELS" "$APP_BIN"; do
+for f in "$BOOTLOADER" "$PARTITION_TABLE" "$SRMODELS"; do
     if [ ! -f "$f" ]; then
         echo "ERROR: Missing required binary: $f" >&2
         MISSING=1
     fi
 done
 
+if [ -z "$APP_BIN" ] || [ ! -f "$APP_BIN" ]; then
+    echo "ERROR: Missing application firmware: no 'firmware.bin' or 'esp32_s3_zero_acoustic_node.bin' found in ${FW_DIR}." >&2
+    MISSING=1
+fi
+
 if [ "$MISSING" -ne 0 ]; then
-    echo "ERROR: Incomplete firmware bundle. Please ensure all .bin files exist in ${FW_DIR}." >&2
+    echo "ERROR: Incomplete firmware bundle. Please ensure bootloader, partition-table, srmodels, and firmware.bin exist in ${FW_DIR}." >&2
     exit 1
 fi
 echo "All firmware binaries validated:"
 echo " - Bootloader:      $(ls -lh "$BOOTLOADER" | awk '{print $5}')"
 echo " - Partition Table: $(ls -lh "$PARTITION_TABLE" | awk '{print $5}')"
 echo " - SR Models:       $(ls -lh "$SRMODELS" | awk '{print $5}')"
-echo " - App Image:       $(ls -lh "$APP_BIN" | awk '{print $5}')"
+echo " - App Image:       $(basename "$APP_BIN") ($(ls -lh "$APP_BIN" | awk '{print $5}'))"
 
 # 2. Validate esptool
 if [ ! -x "${ESPTOOL}" ]; then
@@ -105,6 +118,28 @@ is_rom_mode() {
 }
 
 find_rom_port() {
+    # 1. Match via sysfs USB tree to exact /dev/tty node
+    for dev in /sys/bus/usb/devices/*; do
+        if [ -f "$dev/idVendor" ] && [ -f "$dev/idProduct" ]; then
+            local vid
+            local pid
+            vid=$(cat "$dev/idVendor" 2>/dev/null || true)
+            pid=$(cat "$dev/idProduct" 2>/dev/null || true)
+            if [ "$vid" = "303a" ] && [ "$pid" = "1001" ]; then
+                for tty in "$dev"/*/tty/* "$dev"/*/*/tty/*; do
+                    if [ -d "$tty" ]; then
+                        local tty_name
+                        tty_name=$(basename "$tty")
+                        if [ -e "/dev/$tty_name" ]; then
+                            echo "/dev/$tty_name"
+                            return 0
+                        fi
+                    fi
+                done
+            fi
+        fi
+    done
+    # 2. Match via udevadm property lookup
     for port in /dev/ttyACM* /dev/ttyUSB*; do
         if [ -e "$port" ]; then
             local udev_out
@@ -113,12 +148,6 @@ find_rom_port() {
                 echo "$port"
                 return 0
             fi
-        fi
-    done
-    for port in /dev/ttyACM0 /dev/ttyACM1; do
-        if [ -e "$port" ]; then
-            echo "$port"
-            return 0
         fi
     done
     return 1
@@ -152,21 +181,27 @@ else
 
     if [ -n "$APP_PORT" ] && [ -e "$APP_PORT" ]; then
         echo "Sending CMD:BOOTLOADER to ${APP_PORT}..."
-        python3 -c "
+        PY_INTERP="python3"
+        if [ -x "${VENV_DIR}/bin/python3" ]; then
+            PY_INTERP="${VENV_DIR}/bin/python3"
+        fi
+        "${PY_INTERP}" -c "
 import serial, time
 try:
-    with serial.Serial('${APP_PORT}', 115200, timeout=1.0) as ser:
+    with serial.Serial('${APP_PORT}', 115200, timeout=1.5, dsrdtr=False, rtscts=False) as ser:
+        ser.dtr = True
+        ser.rts = False
+        time.sleep(0.05)
         ser.write(b'CMD:BOOTLOADER\n')
         ser.flush()
-        time.sleep(0.1)
-        resp = ser.read_all()
-        if b'ACK:BOOTLOADER' in resp:
+        line = ser.readline().decode('utf-8', errors='ignore').strip()
+        if 'ACK:BOOTLOADER' in line:
             print('ACK received: Board rebooting into ROM download mode.')
         else:
-            print('Command sent.')
+            print(f'Command sent (response: {line}).')
 except Exception as e:
     print(f'CDC dispatch note: {e}')
-" 2>/dev/null || echo -ne "CMD:BOOTLOADER\n" > "$APP_PORT" 2>/dev/null || true
+" 2>/dev/null || (stty -F "$APP_PORT" 115200 raw -echo 2>/dev/null || true; echo -ne "CMD:BOOTLOADER\n" > "$APP_PORT" 2>/dev/null || true)
     else
         echo "WARNING: Could not find application CDC port (/dev/ttyS3Zero or /dev/ttyACM*)."
         echo "If device is held in GPIO0 BOOT mode, continuing to ROM search..."

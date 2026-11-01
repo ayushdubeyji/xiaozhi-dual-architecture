@@ -856,6 +856,20 @@
         display: inline-flex;
       }
 
+      .hud-brand .brand-badge {
+        display: none !important;
+      }
+
+      @media (max-width: 480px) {
+        .hud-brand span:not(.brand-badge) {
+          font-size: 0.85rem;
+          max-width: 100px;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+      }
+
       .megaseries-layout {
         grid-template-columns: 1fr;
         overflow-x: hidden;

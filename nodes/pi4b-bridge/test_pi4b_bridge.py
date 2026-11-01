@@ -336,6 +336,7 @@ class TestS3FlasherAndResourceManagement(unittest.TestCase):
         self.assertIn("write-flash", content)
         self.assertIn("0x260000", content)
         self.assertIn("0x20000", content)
+        self.assertIn("firmware.bin", content)
 
     def test_desktop_entry_structure(self):
         desktop = self.base_dir / "S3_Update.desktop"
@@ -353,6 +354,7 @@ class TestS3FlasherAndResourceManagement(unittest.TestCase):
         self.assertIn("CPUQuota=300%", content)
         self.assertIn("CMAKE_BUILD_PARALLEL_LEVEL=2", content)
         self.assertIn("systemd-run", content)
+        self.assertIn("SwapTotal", content)
 
     def test_firmware_bundle_binaries(self):
         fw_dir = self.base_dir / "fw"
