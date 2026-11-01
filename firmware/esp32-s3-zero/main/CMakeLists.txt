@@ -5,6 +5,8 @@ idf_component_register(
         "../src/wake_engine.c"
         "../src/usb_hid_trigger.c"
         "../src/hardware_controls.c"
+        "../src/haptics_engine.c"
+        "../src/ws2812_animations.c"
     INCLUDE_DIRS
         "../include"
         "../src"
@@ -13,6 +15,7 @@ idf_component_register(
         esp_driver_i2s
         esp_driver_gpio
         esp_driver_rmt
+        esp_driver_ledc
         esp_timer
         esp_wifi
         esp_netif

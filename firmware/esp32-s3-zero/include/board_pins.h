@@ -63,7 +63,12 @@ extern "C" {
 #define BOARD_PIN_ENC_B         15  /*!< Mouse Rotary Encoder Phase B (Internal Pull-Up) */
 
 /* =========================================================================
- * 7. COMPILE-TIME PIN COLLISION STATIC ASSERTIONS
+ * 7. HAPTIC FEEDBACK MOTOR (15 kHz LEDC PWM)
+ * ========================================================================= */
+#define BOARD_PIN_HAPTIC_PWM    16  /*!< Haptic feedback motor PWM drive (LEDC Channel) */
+
+/* =========================================================================
+ * 8. COMPILE-TIME PIN COLLISION STATIC ASSERTIONS
  * ========================================================================= */
 
 /* USB PHY Pin Sanity */
@@ -150,6 +155,16 @@ _Static_assert(BOARD_PIN_DISP_MISO != BOARD_PIN_I2S_BCLK && BOARD_PIN_DISP_MISO 
 
 _Static_assert(BOARD_PIN_DISP_CS   != BOARD_PIN_WS2812 && BOARD_PIN_DISP_MOSI != BOARD_PIN_WS2812, "Display collides with WS2812");
 _Static_assert(BOARD_PIN_DISP_SCK  != BOARD_PIN_WS2812 && BOARD_PIN_DISP_MISO != BOARD_PIN_WS2812, "Display collides with WS2812");
+
+/* Haptic Feedback Motor Pin Collision Assertions */
+_Static_assert(BOARD_PIN_HAPTIC_PWM != BOARD_PIN_USB_DM && BOARD_PIN_HAPTIC_PWM != BOARD_PIN_USB_DP, "Haptic PWM collides with USB");
+_Static_assert(BOARD_PIN_HAPTIC_PWM != BOARD_PIN_WS2812, "Haptic PWM collides with WS2812");
+_Static_assert(BOARD_PIN_HAPTIC_PWM != BOARD_PIN_I2S_BCLK && BOARD_PIN_HAPTIC_PWM != BOARD_PIN_I2S_WS && BOARD_PIN_HAPTIC_PWM != BOARD_PIN_I2S_DIN, "Haptic PWM collides with I2S");
+_Static_assert(BOARD_PIN_HAPTIC_PWM != BOARD_PIN_PTT_BOOT && BOARD_PIN_HAPTIC_PWM != BOARD_PIN_PTT_EXT, "Haptic PWM collides with PTT");
+_Static_assert(BOARD_PIN_HAPTIC_PWM != BOARD_PIN_JOY_VRX && BOARD_PIN_HAPTIC_PWM != BOARD_PIN_JOY_VRY && BOARD_PIN_HAPTIC_PWM != BOARD_PIN_JOY_SW, "Haptic PWM collides with Joystick");
+_Static_assert(BOARD_PIN_HAPTIC_PWM != BOARD_PIN_ENC_A && BOARD_PIN_HAPTIC_PWM != BOARD_PIN_ENC_B, "Haptic PWM collides with Encoder");
+_Static_assert(BOARD_PIN_HAPTIC_PWM != BOARD_PIN_DISP_DC && BOARD_PIN_HAPTIC_PWM != BOARD_PIN_DISP_RST && BOARD_PIN_HAPTIC_PWM != BOARD_PIN_DISP_BLK, "Haptic PWM collides with Display Control");
+_Static_assert(BOARD_PIN_HAPTIC_PWM != BOARD_PIN_DISP_CS && BOARD_PIN_HAPTIC_PWM != BOARD_PIN_DISP_MOSI && BOARD_PIN_HAPTIC_PWM != BOARD_PIN_DISP_SCK && BOARD_PIN_HAPTIC_PWM != BOARD_PIN_DISP_MISO, "Haptic PWM collides with Display SPI");
 
 #ifdef __cplusplus
 }

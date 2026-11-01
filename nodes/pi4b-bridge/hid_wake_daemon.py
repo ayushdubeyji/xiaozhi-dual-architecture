@@ -28,6 +28,9 @@ except ImportError:
         KEY_W = 17
         KEY_P = 25
         EV_KEY = 1
+        EV_ABS = 3
+        BTN_TOUCH = 330
+        ABS_MT_TRACKING_ID = 57
     ecodes = DummyEcodes()
 
 try:
@@ -219,7 +222,29 @@ class RoverUdpBridge(asyncio.DatagramProtocol):
             # Valid Rover packet: dispatch to ESP32-S3 CDC for ESP-NOW broadcast
             self.serial_bridge.write_rover_packet(data)
         elif len(data) > 0:
-            logger.debug(f"Received non-A7 UDP datagram len={len(data)} from {addr}")
+            try:
+                text = data.decode("utf-8", errors="ignore").strip()
+                if text.startswith("CMD:") or text.startswith("HAPTIC") or text.startswith("LED_PATTERN"):
+                    if not text.startswith("CMD:"):
+                        if ":" in text:
+                            parts = text.split(":")
+                            text = "CMD:" + parts[0] + " " + " ".join(parts[1:])
+                        else:
+                            text = "CMD:" + text
+                    logger.info(f"Bridging UDP command from {addr}: {text}")
+                    self.serial_bridge.write_command(text)
+                elif text.startswith("{") and "haptic" in text.lower():
+                    payload = json.loads(text)
+                    eff = payload.get("effect", payload.get("effect_id", 1))
+                    inten = payload.get("intensity", 180)
+                    dur = payload.get("duration", payload.get("duration_ms", 15))
+                    cmd = f"CMD:HAPTIC {eff} {inten} {dur}"
+                    logger.info(f"Bridging UDP JSON haptic from {addr}: {cmd}")
+                    self.serial_bridge.write_command(cmd)
+                else:
+                    logger.debug(f"Received non-A7 UDP datagram len={len(data)} from {addr}")
+            except Exception as e:
+                logger.debug(f"Received non-A7 UDP datagram error: {e}")
 
 
 class S3SerialBridge:
@@ -242,6 +267,15 @@ class S3SerialBridge:
             if os.path.exists(p):
                 return p
         return None
+
+    def write_command(self, cmd_str: str):
+        if not cmd_str.endswith("\n"):
+            cmd_str += "\n"
+        if self.writer and not self.writer.is_closing():
+            try:
+                self.writer.write(cmd_str.encode("ascii"))
+            except Exception as e:
+                logger.warning(f"Error writing command to S3 CDC: {e}")
 
     def write_rover_packet(self, packet_bytes: bytes):
         if self.writer and not self.writer.is_closing():
@@ -381,11 +415,96 @@ class S3SerialBridge:
             await asyncio.sleep(2.0)
 
 
+class TouchHapticMonitor:
+    """Monitors Goodix / GT911 touch screen event node and dispatches haptic feedback on touch press."""
+
+    def __init__(self, serial_bridge: S3SerialBridge):
+        self.serial_bridge = serial_bridge
+        self.device: Optional[evdev.InputDevice] = None
+        self._last_haptic_time = 0.0
+        self._haptic_cooldown = 0.025  # 25ms minimum cooldown to prevent jitter flood
+
+    def find_touch_device_path(self) -> Optional[str]:
+        if not EVDEV_AVAILABLE:
+            return None
+
+        # Check by-path symlinks first
+        by_path_matches = glob.glob("/dev/input/by-path/*goodix*") + glob.glob("/dev/input/by-path/*touch*")
+        for p in by_path_matches:
+            if os.path.exists(p):
+                return p
+
+        # Inspect all input devices
+        try:
+            device_paths = evdev.list_devices()
+            for path in device_paths:
+                try:
+                    dev = evdev.InputDevice(path)
+                    name_lower = dev.name.lower()
+                    if "goodix" in name_lower or "gt911" in name_lower or "touchscreen" in name_lower or "touch" in name_lower:
+                        return dev.path
+                    caps = dev.capabilities()
+                    if ecodes.EV_ABS in caps:
+                        abs_codes = [c[0] if isinstance(c, tuple) else c for c in caps[ecodes.EV_ABS]]
+                        if getattr(ecodes, 'ABS_MT_TRACKING_ID', 57) in abs_codes:
+                            return dev.path
+                    if ecodes.EV_KEY in caps:
+                        key_codes = caps[ecodes.EV_KEY]
+                        if getattr(ecodes, 'BTN_TOUCH', 330) in key_codes:
+                            return dev.path
+                except Exception:
+                    continue
+        except Exception:
+            pass
+
+        return None
+
+    def trigger_touch_haptic(self):
+        now = time.monotonic()
+        if now - self._last_haptic_time >= self._haptic_cooldown:
+            self._last_haptic_time = now
+            self.serial_bridge.write_command("CMD:HAPTIC 1 180 15\n")
+            logger.debug("Dispatched touch haptic: CMD:HAPTIC 1 180 15")
+
+    async def run(self):
+        if not EVDEV_AVAILABLE:
+            logger.warning("evdev not available; TouchHapticMonitor operating in stub mode")
+            while True:
+                await asyncio.sleep(3600)
+
+        while True:
+            dev_path = self.find_touch_device_path()
+            if not dev_path:
+                await asyncio.sleep(3.0)
+                continue
+
+            try:
+                # Do NOT grab: keep non-exclusive so desktop GUI still receives touches
+                self.device = evdev.InputDevice(dev_path)
+                logger.info(f"Monitoring touch events at {dev_path} ({self.device.name})")
+
+                async for event in self.device.async_read_loop():
+                    # BTN_TOUCH press or new ABS_MT_TRACKING_ID contact
+                    if event.type == ecodes.EV_KEY and event.code == getattr(ecodes, 'BTN_TOUCH', 330):
+                        if event.value == 1:
+                            self.trigger_touch_haptic()
+                    elif event.type == ecodes.EV_ABS and event.code == getattr(ecodes, 'ABS_MT_TRACKING_ID', 57):
+                        if event.value != -1:
+                            self.trigger_touch_haptic()
+
+            except (OSError, IOError) as ex:
+                logger.debug(f"Touch device {dev_path} disconnected or error: {ex}")
+            finally:
+                self.device = None
+            await asyncio.sleep(2.0)
+
+
 async def main():
     logger.info("Initializing ESP32-S3 Host Daemon on Raspberry Pi 4B...")
     ws_bridge = XiaozhiWsBridge()
     s3_serial = S3SerialBridge(ws_bridge=ws_bridge)
     s3_hid = S3HidGrabber(ws_bridge=ws_bridge)
+    s3_touch = TouchHapticMonitor(serial_bridge=s3_serial)
 
     loop = asyncio.get_running_loop()
 
@@ -398,7 +517,8 @@ async def main():
     tasks = [
         asyncio.create_task(ws_bridge.connect_loop()),
         asyncio.create_task(s3_serial.run()),
-        asyncio.create_task(s3_hid.run())
+        asyncio.create_task(s3_hid.run()),
+        asyncio.create_task(s3_touch.run())
     ]
 
     try:

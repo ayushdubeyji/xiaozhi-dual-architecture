@@ -1,5 +1,7 @@
 #include "usb_hid_trigger.h"
 #include "board_pins.h"
+#include "ws2812_animations.h"
+#include "haptics_engine.h"
 #include "esp_log.h"
 #include "esp_wifi.h"
 #include "esp_now.h"
@@ -133,105 +135,9 @@ static char const *string_desc_arr[] = {
 
 /* =========================================================================
  * 2. WS2812 Visual Telemetry LED Driver
- * ========================================================================= */
-
-static led_strip_handle_t s_led_strip = NULL;
-static volatile led_mode_t s_led_mode = LED_MODE_IDLE;
-static uint8_t s_pulse_step = 0;
-
-static void ws2812_init(void)
-{
-    led_strip_config_t strip_config = {
-        .strip_gpio_num = BOARD_PIN_WS2812,
-        .max_leds = 1,
-        .led_pixel_format = LED_PIXEL_FORMAT_GRB,
-        .led_model = LED_MODEL_WS2812,
-        .flags.invert_out = false,
-    };
-    led_strip_rmt_config_t rmt_config = {
-        .clk_src = RMT_CLK_SRC_DEFAULT,
-        .resolution_hz = 10 * 1000 * 1000,
-        .flags.with_dma = false,
-    };
-    esp_err_t ret = led_strip_new_rmt_device(&strip_config, &rmt_config, &s_led_strip);
-    if (ret == ESP_OK) {
-        led_strip_clear(s_led_strip);
-    } else {
-        ESP_LOGE(TAG, "Failed to init WS2812 LED strip: %s", esp_err_to_name(ret));
-    }
-}
-
-void ws2812_set_mode(led_mode_t mode)
-{
-    s_led_mode = mode;
-}
-
-static void led_anim_task(void *pvParameters)
-{
-    while (1) {
-        if (!s_led_strip) {
-            vTaskDelay(pdMS_TO_TICKS(100));
-            continue;
-        }
-
-        switch (s_led_mode) {
-            case LED_MODE_IDLE:
-                led_strip_set_pixel(s_led_strip, 0, 0, 0, 16);
-                led_strip_refresh(s_led_strip);
-                vTaskDelay(pdMS_TO_TICKS(100));
-                break;
-
-            case LED_MODE_WAKE:
-                led_strip_set_pixel(s_led_strip, 0, 0, 255, 255);
-                led_strip_refresh(s_led_strip);
-                vTaskDelay(pdMS_TO_TICKS(350));
-                s_led_mode = LED_MODE_STREAMING;
-                break;
-
-            case LED_MODE_STREAMING: {
-                s_pulse_step = (s_pulse_step + 8) % 256;
-                uint8_t green_val = (s_pulse_step < 128) ? (s_pulse_step * 2) : (510 - s_pulse_step * 2);
-                if (green_val < 30) green_val = 30;
-                led_strip_set_pixel(s_led_strip, 0, 0, green_val, 0);
-                led_strip_refresh(s_led_strip);
-                vTaskDelay(pdMS_TO_TICKS(33));
-                break;
-            }
-
-            case LED_MODE_PTT:
-                led_strip_set_pixel(s_led_strip, 0, 255, 140, 0);
-                led_strip_refresh(s_led_strip);
-                vTaskDelay(pdMS_TO_TICKS(50));
-                break;
-
-            case LED_MODE_RNDIS:
-                led_strip_set_pixel(s_led_strip, 0, 140, 0, 255);
-                led_strip_refresh(s_led_strip);
-                vTaskDelay(pdMS_TO_TICKS(80));
-                break;
-
-            case LED_MODE_DRIVE:
-                led_strip_set_pixel(s_led_strip, 0, 0, 200, 60); // Emerald Green
-                led_strip_refresh(s_led_strip);
-                vTaskDelay(pdMS_TO_TICKS(100));
-                break;
-
-            case LED_MODE_GIMBAL:
-                led_strip_set_pixel(s_led_strip, 0, 0, 180, 255); // Cyan/Ice Blue
-                led_strip_refresh(s_led_strip);
-                vTaskDelay(pdMS_TO_TICKS(100));
-                break;
-
-            case LED_MODE_ERROR:
-                led_strip_set_pixel(s_led_strip, 0, 255, 0, 0);
-                led_strip_refresh(s_led_strip);
-                vTaskDelay(pdMS_TO_TICKS(150));
-                led_strip_clear(s_led_strip);
-                vTaskDelay(pdMS_TO_TICKS(150));
-                break;
-        }
-    }
-}
+ * =========================================================================
+ * Delegated to ws2812_animations.c for organic shader routines & audio reactive aura.
+ */
 
 /* =========================================================================
  * 3. HID Keyboard & Mouse Keystroke / Scroll Dispatcher
@@ -241,6 +147,7 @@ static void led_anim_task(void *pvParameters)
 
 void usb_hid_send_wake_keystroke(void)
 {
+    ws2812_flash_wake();
     if (!tud_hid_ready()) {
         ESP_LOGW(TAG, "TinyUSB HID not ready to dispatch Wake keystroke");
         return;
@@ -283,6 +190,23 @@ void usb_hid_send_mouse_scroll(int8_t scroll_step)
 void usb_stream_audio_frame(const int16_t *pcm_mono, size_t samples)
 {
     if (!tud_cdc_connected()) return;
+
+    // Calculate energy downsampled for WS2812 dynamic aurora reaction
+    if (pcm_mono && samples > 0) {
+        int32_t sum = 0;
+        size_t step = (samples > 120) ? (samples / 120) : 1;
+        size_t count = 0;
+        for (size_t i = 0; i < samples; i += step) {
+            sum += abs((int)pcm_mono[i]);
+            count++;
+        }
+        if (count > 0) {
+            int32_t avg = sum / (int32_t)count;
+            int energy = (avg >> 5); // 0..255 scale
+            if (energy > 255) energy = 255;
+            ws2812_set_audio_energy((uint8_t)energy);
+        }
+    }
 
     uint16_t byte_len = samples * sizeof(int16_t);
     uint8_t header[4] = {
@@ -352,6 +276,7 @@ static void process_host_command(const char *cmd_line)
         }
     } else if (strcmp(cmd_line, "CMD:ROVER_ESTOP") == 0) {
         espnow_rover_send_command(0, 0, 0, 0x08, 0); // E-stop button flag
+        haptics_play(HAPTIC_ALERT, 220, 240);
         tud_cdc_write_str("ROVER:ESTOP_TRIGGERED\n");
         tud_cdc_write_flush();
     } else if (strncmp(cmd_line, "CMD:ROVER_GIMBAL", 16) == 0) {
@@ -360,6 +285,31 @@ static void process_host_command(const char *cmd_line)
             char gcmd[48];
             snprintf(gcmd, sizeof(gcmd), "GIMBAL_ACK:%d,%d\n", pan, tilt);
             tud_cdc_write_str(gcmd);
+            tud_cdc_write_flush();
+        }
+    } else if (strncmp(cmd_line, "CMD:HAPTIC", 10) == 0) {
+        int effect_id = 1;
+        int intensity = 180;
+        int duration_ms = 0;
+        int matched = sscanf(cmd_line + 10, "%d %d %d", &effect_id, &intensity, &duration_ms);
+        if (matched >= 1) {
+            if (intensity <= 0 || intensity > 255) intensity = 180;
+            haptics_play((haptic_effect_t)effect_id, (uint8_t)intensity, (uint16_t)duration_ms);
+            char ack[48];
+            snprintf(ack, sizeof(ack), "HAPTIC_ACK:%d,%d,%d\n", effect_id, intensity, duration_ms);
+            tud_cdc_write_str(ack);
+            tud_cdc_write_flush();
+        }
+    } else if (strncmp(cmd_line, "CMD:LED_PATTERN", 15) == 0) {
+        int pattern_id = 0;
+        int hue_offset = 0;
+        int speed = 100;
+        int matched = sscanf(cmd_line + 15, "%d %d %d", &pattern_id, &hue_offset, &speed);
+        if (matched >= 1) {
+            ws2812_set_pattern((uint8_t)pattern_id, (int16_t)hue_offset, (uint16_t)speed);
+            char ack[48];
+            snprintf(ack, sizeof(ack), "LED_ACK:%d,%d,%d\n", pattern_id, hue_offset, speed);
+            tud_cdc_write_str(ack);
             tud_cdc_write_flush();
         }
     } else if (strcmp(cmd_line, "CMD:BOOTLOADER") == 0 || strcmp(cmd_line, "s3_bootloader") == 0) {
@@ -599,7 +549,7 @@ static esp_netif_driver_ifconfig_t s_usb_driver_cfg = {
     .transmit = usb_netif_transmit,
 };
 
-static void init_usb_netif(void)
+static void __attribute__((unused)) init_usb_netif(void)
 {
     esp_netif_inherent_config_t base_cfg = {
         .flags = ESP_NETIF_DHCP_SERVER | ESP_NETIF_FLAG_AUTOUP | ESP_NETIF_FLAG_IS_PPP,
@@ -641,8 +591,7 @@ esp_err_t usb_hid_trigger_init(void)
     REG_CLR_BIT(RTC_CNTL_OPTION1_REG, RTC_CNTL_FORCE_DOWNLOAD_BOOT);
 
     // 1. Initialize WS2812 RGB LED & Animation Task
-    ws2812_init();
-    xTaskCreatePinnedToCore(led_anim_task, "led_anim", 2048, NULL, 3, NULL, 0);
+    ws2812_animations_init();
 
     // 2. Initialize Wi-Fi Netif & Event Handlers
     esp_netif_init();

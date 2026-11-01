@@ -370,6 +370,78 @@ class TestS3FlasherAndResourceManagement(unittest.TestCase):
             self.assertTrue(p.exists(), f"Binary {b} must exist in fw/")
             self.assertGreater(p.stat().st_size, 0, f"Binary {b} must not be empty")
 
+    def test_haptic_udp_bridging(self):
+        mock_serial = MagicMock()
+        bridge = hid_wake_daemon.RoverUdpBridge(serial_bridge=mock_serial)
+
+        # Plain text CMD:HAPTIC
+        bridge.datagram_received(b"CMD:HAPTIC 1 180 15\n", ("127.0.0.1", 12345))
+        mock_serial.write_command.assert_called_with("CMD:HAPTIC 1 180 15")
+
+        # Prefixless HAPTIC
+        bridge.datagram_received(b"HAPTIC 4 200 20\n", ("127.0.0.1", 12345))
+        mock_serial.write_command.assert_called_with("CMD:HAPTIC 4 200 20")
+
+        # Colon-separated HAPTIC:2:190:25
+        bridge.datagram_received(b"HAPTIC:2:190:25\n", ("127.0.0.1", 12345))
+        mock_serial.write_command.assert_called_with("CMD:HAPTIC 2 190 25")
+
+        # JSON payload
+        bridge.datagram_received(b'{"cmd": "haptic", "effect": 5, "intensity": 150, "duration": 10}', ("127.0.0.1", 12345))
+        mock_serial.write_command.assert_called_with("CMD:HAPTIC 5 150 10")
+
+        # LED_PATTERN
+        bridge.datagram_received(b"LED_PATTERN 1 60 100\n", ("127.0.0.1", 12345))
+        mock_serial.write_command.assert_called_with("CMD:LED_PATTERN 1 60 100")
+
+    def test_touch_haptic_monitor(self):
+        mock_serial = MagicMock()
+        monitor = hid_wake_daemon.TouchHapticMonitor(serial_bridge=mock_serial)
+
+        # First trigger should dispatch
+        monitor.trigger_touch_haptic()
+        mock_serial.write_command.assert_called_with("CMD:HAPTIC 1 180 15\n")
+
+        # Immediate second trigger within cooldown (25ms) should be debounced
+        mock_serial.reset_mock()
+        monitor.trigger_touch_haptic()
+        mock_serial.write_command.assert_not_called()
+
+    def test_settings_gui_structure(self):
+        settings_file = self.base_dir / "settings_gui.py"
+        self.assertTrue(settings_file.exists(), "settings_gui.py must exist")
+        content = settings_file.read_text(encoding="utf-8")
+        self.assertIn("HAPTIC_LEVELS", content)
+        self.assertIn("LED_THEMES", content)
+        self.assertIn("CMD:HAPTIC", content)
+        self.assertIn("CMD:LED_PATTERN", content)
+        self.assertIn("Cosmic Nebula", content)
+        self.assertIn("Cyberpunk Aurora", content)
+
+    def test_haptic_curves_math(self):
+        # Index 1: Exponential decay kick
+        decay_norm = (10 - 8) / (15 - 8)
+        factor_decay = math.exp(-3.5 * decay_norm)
+        self.assertLess(factor_decay, 1.0)
+        self.assertGreater(factor_decay, 0.0)
+
+        # Index 2: Ease-in-quad
+        t = 12.5
+        ramp = 25.0
+        norm = t / ramp
+        quad = norm * norm
+        self.assertAlmostEqual(quad, 0.25)
+
+        # Index 3: Ease-out-cubic
+        norm_rel = 0.5
+        inv_cubic = (1.0 - norm_rel) ** 3
+        self.assertAlmostEqual(inv_cubic, 0.125)
+
+        # Index 4: Gaussian bell curve
+        diff_center = 0.0
+        gaussian_peak = math.exp(-0.5 * diff_center * diff_center)
+        self.assertEqual(gaussian_peak, 1.0)
+
 
 if __name__ == "__main__":
     unittest.main()

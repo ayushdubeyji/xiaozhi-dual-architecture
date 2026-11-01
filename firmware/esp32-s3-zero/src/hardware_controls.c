@@ -13,6 +13,7 @@
 
 #include "board_pins.h"
 #include "usb_hid_trigger.h"
+#include "haptics_engine.h"
 
 static const char *TAG = "hardware_controls";
 
@@ -192,9 +193,11 @@ static void hardware_controls_task(void *pvParameters)
             // 4 transitions per physical detent click
             if (s_enc_accum >= 4) {
                 usb_hid_send_mouse_scroll(1); // Scroll Up
+                haptics_play(HAPTIC_DETENT, 160, 12);
                 s_enc_accum = 0;
             } else if (s_enc_accum <= -4) {
                 usb_hid_send_mouse_scroll(-1); // Scroll Down
+                haptics_play(HAPTIC_DETENT, 160, 12);
                 s_enc_accum = 0;
             }
         }
@@ -208,6 +211,7 @@ static void hardware_controls_task(void *pvParameters)
             // Button pressed down
             press_start_ms = now_ms;
             last_sw_pressed = true;
+            haptics_play(HAPTIC_PRESS, 190, 25);
         } else if (sw_pressed && last_sw_pressed) {
             // Held down: check long press for PTT (> 450ms)
             if (!ptt_active_via_sw && (now_ms - press_start_ms > 450)) {
@@ -219,6 +223,7 @@ static void hardware_controls_task(void *pvParameters)
         } else if (!sw_pressed && last_sw_pressed) {
             // Button released
             last_sw_pressed = false;
+            haptics_play(HAPTIC_RELEASE, 140, 20);
             if (ptt_active_via_sw) {
                 ptt_active_via_sw = false;
                 usb_hid_send_ptt_keystroke(false);
@@ -270,6 +275,13 @@ static void hardware_controls_task(void *pvParameters)
         if ((loop_counter % 6) == 0) {
             int8_t norm_x = 0, norm_y = 0;
             read_joystick_normalized(&norm_x, &norm_y);
+
+            bool is_centered = (norm_x == 0 && norm_y == 0);
+            static bool s_last_centered = true;
+            if (is_centered != s_last_centered) {
+                haptics_play(HAPTIC_JOYSTICK_CENTER, 150, 10);
+                s_last_centered = is_centered;
+            }
 
             if (s_current_mode == CONTROL_MODE_DRIVE) {
                 // In Drive Mode:

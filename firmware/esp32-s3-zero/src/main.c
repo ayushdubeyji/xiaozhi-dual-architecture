@@ -12,6 +12,7 @@
 #include "audio_capture.h"
 #include "wake_engine.h"
 #include "usb_hid_trigger.h"
+#include "haptics_engine.h"
 
 static const char *TAG = "s3_acoustic_node";
 
@@ -96,7 +97,13 @@ void app_main(void)
     }
     hardware_controls_start_task();
 
-    // 7. Spawn Core 0 & Core 1 Real-Time Tasks
+    // 7. Initialize Haptics Engine (LEDC 15 kHz PWM on GPIO 16)
+    ret = haptics_engine_init();
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to init haptics engine: %s", esp_err_to_name(ret));
+    }
+
+    // 8. Spawn Core 0 & Core 1 Real-Time Tasks
     wake_engine_start_tasks();
 
     ESP_LOGI(TAG, "System running. Ready for WakeNet keyword, PTT trigger, CDC audio, and ESP-NOW rover commands.");
