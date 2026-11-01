@@ -80,7 +80,7 @@
       text-rendering: optimizeLegibility;
       -webkit-font-smoothing: antialiased;
       -moz-osx-font-smoothing: grayscale;
-      overflow-x: hidden;
+      overflow-x: clip;
       max-width: 100vw;
       width: 100%;
     }
@@ -90,7 +90,7 @@
                   radial-gradient(circle at 100% 100%, #061124 0%, var(--bg-deep) 70%);
       background-attachment: fixed;
       min-height: 100vh;
-      overflow-x: hidden;
+      overflow-x: clip;
       max-width: 100vw;
       width: 100%;
       display: flex;
@@ -193,6 +193,7 @@
       max-width: 1600px;
       margin: 0 auto;
       width: 100%;
+      align-items: start;
     }
 
     /* Sidebar Table of Contents */
@@ -903,7 +904,439 @@
         font-size: 1rem;
       }
     }
+  
+    /* ==========================================================================
+       STACKED COURSE LAYOUT & INTERACTIVE MODULE CONTROLLER
+       ========================================================================== */
+    .course-mode-banner {
+      background: linear-gradient(90deg, rgba(0, 240, 255, 0.08) 0%, rgba(16, 185, 129, 0.08) 100%);
+      border: 1px solid rgba(0, 240, 255, 0.25);
+      border-radius: 12px;
+      padding: 1.25rem 1.5rem;
+      margin: 1.5rem 0 2rem 0;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      box-sizing: border-box;
+      max-width: 100%;
+    }
+    .course-mode-title {
+      font-family: var(--font-mono);
+      font-size: 0.95rem;
+      color: var(--cyan-neon);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .course-mode-controls {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+    .course-mode-btn {
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      padding: 0.45rem 0.9rem;
+      border-radius: 6px;
+      border: 1px solid rgba(0, 240, 255, 0.35);
+      background: rgba(0, 240, 255, 0.08);
+      color: var(--text-primary);
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      min-height: 44px;
+      min-width: 44px;
+      box-sizing: border-box;
+    }
+    .course-mode-btn:hover, .course-mode-btn.active {
+      background: var(--cyan-neon);
+      color: #030712;
+      border-color: var(--cyan-neon);
+      font-weight: 700;
+      box-shadow: 0 0 12px rgba(0, 240, 255, 0.4);
+    }
+    
+    /* Module Tab Switcher / Stepper Strip */
+    .course-stepper-strip {
+      display: flex;
+      gap: 0.5rem;
+      overflow-x: auto;
+      padding: 0.5rem 0.25rem 1rem 0.25rem;
+      margin-bottom: 2rem;
+      scrollbar-width: thin;
+      scrollbar-color: var(--cyan-neon) rgba(255, 255, 255, 0.05);
+      -webkit-overflow-scrolling: touch;
+      box-sizing: border-box;
+      max-width: 100%;
+    }
+    .module-step-btn {
+      flex: 0 0 auto;
+      padding: 0.65rem 1rem;
+      border-radius: 8px;
+      background: rgba(13, 27, 58, 0.8);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: var(--text-secondary);
+      font-family: var(--font-mono);
+      font-size: 0.82rem;
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.25rem;
+      min-width: 140px;
+      min-height: 48px;
+      box-sizing: border-box;
+    }
+    .module-step-btn .step-tag {
+      font-size: 0.7rem;
+      color: var(--cyan-neon);
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+    .module-step-btn .step-title {
+      font-size: 0.78rem;
+      color: var(--text-primary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 180px;
+    }
+    .module-step-btn:hover {
+      border-color: var(--cyan-neon);
+      background: rgba(0, 240, 255, 0.1);
+      transform: translateY(-2px);
+    }
+    .module-step-btn.active {
+      border-color: var(--cyan-neon);
+      background: linear-gradient(135deg, rgba(0, 240, 255, 0.2) 0%, rgba(16, 185, 129, 0.15) 100%);
+      box-shadow: 0 4px 16px rgba(0, 240, 255, 0.25);
+    }
+    .module-step-btn.active .step-tag {
+      color: #ffffff;
+      text-shadow: 0 0 8px var(--cyan-neon);
+    }
+
+    /* Module Visual Hero Card */
+    .module-visual-card {
+      background: linear-gradient(135deg, rgba(13, 27, 58, 0.9) 0%, rgba(5, 12, 28, 0.95) 100%);
+      border: 1px solid var(--cyan-neon);
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin: 1.5rem 0 2rem 0;
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      gap: 1.75rem;
+      box-shadow: 0 8px 32px rgba(0, 240, 255, 0.12);
+      box-sizing: border-box;
+      max-width: 100%;
+    }
+    @media (max-width: 768px) {
+      .module-visual-card {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+    }
+    .module-visual-media {
+      flex: 0 0 160px;
+      height: 160px;
+      border-radius: 10px;
+      overflow: hidden;
+      background: rgba(0, 0, 0, 0.35);
+      border: 1px solid rgba(0, 240, 255, 0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-sizing: border-box;
+    }
+    .module-visual-media video,
+    .module-visual-media img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+    .module-visual-content {
+      flex: 1 1 auto;
+      min-width: 0;
+    }
+    .module-visual-badge {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--cyan-neon);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 0.5rem;
+    }
+    .module-visual-heading {
+      font-size: 1.4rem;
+      font-weight: 800;
+      color: var(--text-bright);
+      margin: 0 0 0.5rem 0;
+      line-height: 1.3;
+    }
+    .module-visual-desc {
+      font-size: 0.92rem;
+      color: var(--text-secondary);
+      line-height: 1.6;
+      margin: 0;
+    }
+
+    /* Bottom Module Step Navigation */
+    .module-bottom-nav {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      margin: 3.5rem 0 2rem 0;
+      padding: 1.5rem;
+      background: rgba(13, 27, 58, 0.6);
+      border: 1px solid rgba(0, 240, 255, 0.2);
+      border-radius: 12px;
+      box-sizing: border-box;
+      max-width: 100%;
+    }
+    .module-nav-btn {
+      font-family: var(--font-mono);
+      font-size: 0.88rem;
+      padding: 0.75rem 1.25rem;
+      border-radius: 8px;
+      border: 1px solid rgba(0, 240, 255, 0.3);
+      background: rgba(0, 240, 255, 0.08);
+      color: var(--cyan-neon);
+      text-decoration: none;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      min-height: 44px;
+      transition: all 0.2s ease;
+      box-sizing: border-box;
+    }
+    .module-nav-btn:hover {
+      background: var(--cyan-neon);
+      color: #030712;
+      font-weight: 700;
+      box-shadow: 0 0 16px rgba(0, 240, 255, 0.4);
+    }
+    .module-nav-btn.primary {
+      background: linear-gradient(135deg, rgba(0, 240, 255, 0.25) 0%, rgba(16, 185, 129, 0.25) 100%);
+      border-color: var(--cyan-neon);
+      color: #ffffff;
+      font-weight: 700;
+    }
+
+    /* Stacked view state: when body has course-stacked-mode */
+    body.course-stacked-mode section[id^="chapter-"],
+    body.course-stacked-mode article[id^="chapter-"] {
+      display: none;
+    }
+    body.course-stacked-mode section[id^="chapter-"].active-module,
+    body.course-stacked-mode article[id^="chapter-"].active-module {
+      display: block;
+      animation: fadeInModule 0.3s ease-out;
+    }
+    @keyframes fadeInModule {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+  
+    /* ==========================================================================
+       FLOATING COURSE INDEX & QUICK NAV COMPONENT (Don't overdo it)
+       ========================================================================== */
+    .floating-index-btn {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 990;
+      background: rgba(8, 12, 20, 0.88);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(0, 240, 255, 0.45);
+      border-radius: 9999px;
+      padding: 0.6rem 1.1rem;
+      color: var(--text-primary, #f1f5f9);
+      font-family: var(--font-mono, monospace);
+      font-size: 0.82rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.6rem;
+      cursor: pointer;
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6), 0 0 15px rgba(0, 240, 255, 0.25);
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      min-height: 44px;
+      box-sizing: border-box;
+      user-select: none;
+    }
+    .floating-index-btn:hover {
+      border-color: var(--cyan-neon, #00f0ff);
+      box-shadow: 0 10px 35px rgba(0, 0, 0, 0.7), 0 0 22px rgba(0, 240, 255, 0.45);
+      transform: translateY(-2px);
+    }
+    .floating-index-btn:active {
+      transform: translateY(0);
+    }
+    .floating-index-pill-badge {
+      background: rgba(0, 240, 255, 0.18);
+      color: var(--cyan-neon, #00f0ff);
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      letter-spacing: 0.04em;
+    }
+    .floating-index-popover {
+      position: fixed;
+      bottom: 80px;
+      right: 24px;
+      width: 380px;
+      max-width: calc(100vw - 32px);
+      max-height: calc(85vh - 90px);
+      background: rgba(10, 15, 26, 0.96);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(0, 240, 255, 0.35);
+      border-radius: 14px;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8), 0 0 30px rgba(0, 240, 255, 0.2);
+      z-index: 995;
+      display: none;
+      flex-direction: column;
+      overflow: hidden;
+      box-sizing: border-box;
+      animation: popoverFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .floating-index-popover.open {
+      display: flex;
+    }
+    @keyframes popoverFadeIn {
+      from { opacity: 0; transform: translateY(10px) scale(0.97); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    .floating-index-header {
+      padding: 1rem 1.25rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(0, 240, 255, 0.04);
+    }
+    .floating-index-header h4 {
+      margin: 0;
+      font-size: 0.9rem;
+      font-family: var(--font-mono, monospace);
+      color: var(--cyan-neon, #00f0ff);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .floating-index-close {
+      background: transparent;
+      border: none;
+      color: var(--text-muted, #94a3b8);
+      font-size: 1.25rem;
+      cursor: pointer;
+      padding: 4px 8px;
+      line-height: 1;
+      border-radius: 4px;
+      min-height: 36px;
+      min-width: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .floating-index-close:hover {
+      color: #fff;
+      background: rgba(255, 255, 255, 0.1);
+    }
+    .floating-index-body {
+      padding: 0.75rem 1rem;
+      overflow-y: auto;
+      scrollbar-width: thin;
+      scrollbar-color: var(--cyan-neon) rgba(255, 255, 255, 0.05);
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+    .floating-index-mod-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.6rem 0.8rem;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      background: rgba(255, 255, 255, 0.02);
+      color: var(--text-primary, #f1f5f9);
+      cursor: pointer;
+      text-decoration: none;
+      font-size: 0.8rem;
+      transition: all 0.15s ease;
+      min-height: 44px;
+      box-sizing: border-box;
+    }
+    .floating-index-mod-item:hover, .floating-index-mod-item.active {
+      background: rgba(0, 240, 255, 0.12);
+      border-color: rgba(0, 240, 255, 0.35);
+      color: var(--cyan-neon, #00f0ff);
+    }
+    .floating-index-mod-tag {
+      font-family: var(--font-mono, monospace);
+      font-weight: 700;
+      color: var(--cyan-neon, #00f0ff);
+      margin-right: 0.5rem;
+    }
+    .floating-index-footer {
+      padding: 0.75rem 1rem;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(0, 0, 0, 0.3);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+    }
+    .floating-index-footer-btn {
+      font-family: var(--font-mono, monospace);
+      font-size: 0.75rem;
+      padding: 0.4rem 0.75rem;
+      border-radius: 6px;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text-muted, #94a3b8);
+      cursor: pointer;
+      min-height: 38px;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+    .floating-index-footer-btn:hover {
+      color: #fff;
+      border-color: rgba(255, 255, 255, 0.3);
+    }
+    @media (max-width: 600px) {
+      .floating-index-btn {
+        bottom: 16px;
+        right: 16px;
+        padding: 0.5rem 0.85rem;
+        font-size: 0.78rem;
+      }
+      .floating-index-popover {
+        bottom: 72px;
+        right: 16px;
+        width: calc(100vw - 32px);
+      }
+    }
+
   </style>
+  <link rel="stylesheet" href="/static/reading_slider.css">
+  <link rel="stylesheet" href="/static/bento_animations.css">
 </head>
 <body>
 
@@ -930,6 +1363,7 @@
       </div>
     </div>
   </header>
+
 
   <!-- Mobile Drawer Backdrop Overlay -->
   <div class="drawer-overlay" id="drawerOverlay"></div>
@@ -1488,8 +1922,94 @@
         </div>
       </header>
 
+      <!-- COURSE MODE BANNER & MODULE STEPPER -->
+      <div class="course-mode-banner">
+        <div class="course-mode-title">
+          <span>📚 INTERACTIVE COURSE VIEW</span>
+          <span style="color: var(--text-muted); font-size: 0.8rem;" id="courseProgressText">• Loading progress...</span>
+        </div>
+        <div class="course-mode-controls">
+          <button class="course-mode-btn active" id="btnStackedMode" onclick="setCourseLayoutMode('stacked')">
+            <span>◫ Stacked Module View</span>
+          </button>
+          <button class="course-mode-btn" id="btnFullMode" onclick="setCourseLayoutMode('full')">
+            <span>☰ Full Infinite Scroll</span>
+          </button>
+          <button class="course-mode-btn" onclick="window.toggleCommandPalette ? window.toggleCommandPalette() : alert('Command palette')">
+            <span>⚡ Jump (Ctrl+K)</span>
+          </button>
+        </div>
+      </div>
+
+      <nav class="course-stepper-strip" id="courseStepperStrip" aria-label="Course Modules">
+
+        <button class="module-step-btn active" data-mod-num="1" onclick="switchModule(1)">
+          <span class="step-tag">MODULE 1</span>
+          <span class="step-title">1. Cyberdeck Architecture</span>
+        </button>
+
+        <button class="module-step-btn " data-mod-num="2" onclick="switchModule(2)">
+          <span class="step-tag">MODULE 2</span>
+          <span class="step-title">2. Embedded Vision C++20</span>
+        </button>
+
+        <button class="module-step-btn " data-mod-num="3" onclick="switchModule(3)">
+          <span class="step-tag">MODULE 3</span>
+          <span class="step-title">3. Voice Broker & Speech</span>
+        </button>
+
+        <button class="module-step-btn " data-mod-num="4" onclick="switchModule(4)">
+          <span class="step-tag">MODULE 4</span>
+          <span class="step-title">4. Mecanum & Acoustic Array</span>
+        </button>
+
+        <button class="module-step-btn " data-mod-num="5" onclick="switchModule(5)">
+          <span class="step-tag">MODULE 5</span>
+          <span class="step-title">5. IMU & Radar Fusion</span>
+        </button>
+
+        <button class="module-step-btn " data-mod-num="6" onclick="switchModule(6)">
+          <span class="step-tag">MODULE 6</span>
+          <span class="step-title">6. Federated Multi-Agent</span>
+        </button>
+
+        <button class="module-step-btn " data-mod-num="7" onclick="switchModule(7)">
+          <span class="step-tag">MODULE 7</span>
+          <span class="step-title">7. Motor Control & PIO</span>
+        </button>
+
+        <button class="module-step-btn " data-mod-num="8" onclick="switchModule(8)">
+          <span class="step-tag">MODULE 8</span>
+          <span class="step-title">8. Air Remote Controller</span>
+        </button>
+
+        <button class="module-step-btn " data-mod-num="9" onclick="switchModule(9)">
+          <span class="step-tag">MODULE 9</span>
+          <span class="step-title">9. Spatial Occupancy Map</span>
+        </button>
+
+        <button class="module-step-btn " data-mod-num="10" onclick="switchModule(10)">
+          <span class="step-tag">MODULE 10</span>
+          <span class="step-title">10. Capstone Autonomy</span>
+        </button>
+      </nav>
+
+
       <!-- CHAPTERS 1 TO 3 -->
       <section id="chapter-1">
+
+    <!-- Module 1 Icons8 Visual Card -->
+    <div class="module-visual-card">
+      <div class="module-visual-media">
+        <video autoplay loop muted playsinline poster="/static/assets/icons8/animated/3d_casual_life_smart_device_displaying_glowin_poster.png"><source src="/static/assets/icons8/animated/3d_casual_life_smart_device_displaying_glowin.mp4" type="video/mp4; codecs=hvc1"><source src="/static/assets/icons8/animated/3d_casual_life_smart_device_displaying_glowin.webm" type="video/webm"></video>
+      </div>
+      <div class="module-visual-content">
+        <div class="module-visual-badge">MODULE 1 • HARDWARE COEXISTENCE & DPI DISPLAY</div>
+        <h2 class="module-visual-heading">Cyberdeck Form-Factor Architecture</h2>
+        <p class="module-visual-desc">Single-board computer coexistence matrix, Sitronix ST7265 800x480 DPI-1 driver, MP3302 step-up boost backlight physics, and Wayland low-latency compositing.</p>
+      </div>
+    </div>
+    
     <h1>Chapter 1: Cyberdeck System Architecture &amp; Physical Hardware Engineering</h1>
     <p>
       In his seminal treatise <em>The Beginning of Infinity</em>, physicist David Deutsch establishes that problems are inevitable, but problems are solvable given the requisite knowledge. For three decades, the personal computer steadily retreated behind sterile glass rectangles and ephemeral cloud abstractions—trapping digital intelligence inside browser viewports, isolated from the kinetic realities of physical space. Embodied computing inverts this retreat. A cyberdeck is not a retro aesthetic novelty; it is an integrated sensory and actuator interface, a localized thermodynamic node where computing, tactile proprioception, high-speed electromagnetic buses, and physical agency intersect.
@@ -2085,7 +2605,32 @@ dtoverlay=gpio-fan,gpiopin=21,temp=55000,hyst=5000</code></pre>
   <!-- ==============================================================================
        CHAPTER 2: HIGH-FRAME-RATE EMBEDDED VISION: ARDUCAM IMX519 C++20 PIPELINE
        ============================================================================== -->
-  <section id="chapter-2">
+  
+    <!-- Module 1 Course Step Navigation -->
+    <div class="module-bottom-nav">
+      <div>
+        <span style="color: var(--text-muted); font-size: 0.85rem;">First Module</span>
+      </div>
+      <div style="display: flex; gap: 0.75rem;">
+        <button class="module-nav-btn" onclick="window.scrollTo({top: 0, behavior: 'smooth'});">&uarr; Module Top</button>
+        <button class="module-nav-btn primary" onclick="completeAndNext(1, 2)">Complete &amp; Next Module (2) &rarr;</button>
+      </div>
+    </div>
+    
+    <section id="chapter-2">
+
+    <!-- Module 2 Icons8 Visual Card -->
+    <div class="module-visual-card">
+      <div class="module-visual-media">
+        <video autoplay loop muted playsinline poster="/static/assets/icons8/animated/processor_poster.png"><source src="/static/assets/icons8/animated/processor.mp4" type="video/mp4; codecs=hvc1"><source src="/static/assets/icons8/animated/processor.webm" type="video/webm"></video>
+      </div>
+      <div class="module-visual-content">
+        <div class="module-visual-badge">MODULE 2 • C++20 NEON & 60FPS ACQUISITION</div>
+        <h2 class="module-visual-heading">Embedded Vision: IMX519 C++20 Lockless Pipeline</h2>
+        <p class="module-visual-desc">Cache-line-aligned lockless SPSC ring buffers, ARMv8-A 128-bit NEON SIMD processing, Laplacian edge scoring, and libcamera zero-copy V4L2 acquisition.</p>
+      </div>
+    </div>
+    
     <h1>Chapter 2: High-Frame-Rate Embedded Vision &mdash; Arducam IMX519 C++20 Pipeline</h1>
     <p>
       In <em>An Immense World</em>, science writer Ed Yong describes an organism's <em>Umwelt</em>&mdash;the distinct slice of reality permitted by its sensory physiology. A biological eye does not process reality in disjointed batches; photons strike photoreceptors, rhodopsin molecules isomerize, and retinal bipolar cells transmit continuous spike trains directly to the optic tectum with microsecond latency. High-frame-rate embedded vision strives toward this biological ideal: closing the sensor-to-actuation loop before kinematic entropy destabilizes the robot.
@@ -2533,7 +3078,32 @@ ps -eLo pid,tid,class,rtprio,comm,psr | grep imx519</code></pre>
   <!-- ==============================================================================
        CHAPTER 3: EDGE ACOUSTIC & TACTILE COPROCESSOR: WAVESHARE ESP32-S3-ZERO
        ============================================================================== -->
-  <section id="chapter-3">
+  
+    <!-- Module 2 Course Step Navigation -->
+    <div class="module-bottom-nav">
+      <div>
+        <button class="module-nav-btn" onclick="switchModule(1)">&larr; Previous Module (1)</button>
+      </div>
+      <div style="display: flex; gap: 0.75rem;">
+        <button class="module-nav-btn" onclick="window.scrollTo({top: 0, behavior: 'smooth'});">&uarr; Module Top</button>
+        <button class="module-nav-btn primary" onclick="completeAndNext(2, 3)">Complete &amp; Next Module (3) &rarr;</button>
+      </div>
+    </div>
+    
+    <section id="chapter-3">
+
+    <!-- Module 3 Icons8 Visual Card -->
+    <div class="module-visual-card">
+      <div class="module-visual-media">
+        <video autoplay loop muted playsinline poster="/static/assets/icons8/animated/microphone_poster.png"><source src="/static/assets/icons8/animated/microphone.mp4" type="video/mp4; codecs=hvc1"><source src="/static/assets/icons8/animated/microphone.webm" type="video/webm"></video>
+      </div>
+      <div class="module-visual-content">
+        <div class="module-visual-badge">MODULE 3 • SUB-600MS GROQ & OPUS DSP</div>
+        <h2 class="module-visual-heading">Physical AI Voice Broker & Dual-Core Speech Engine</h2>
+        <p class="module-visual-desc">Dual-ring buffer architecture, sub-600ms Whisper STT via Groq, ElevenLabs streaming TTS, and Opus 16kHz framing on heterogeneous ARM/ESP32 cores.</p>
+      </div>
+    </div>
+    
     <h1>Chapter 3: Edge Acoustic &amp; Tactile Coprocessor &mdash; Waveshare ESP32-S3-Zero</h1>
     <p>
       In Liu Cixin's <em>The Three-Body Problem</em>, interstellar communication protocols are governed by relentless signal-to-noise realities. Electromagnetic pulses disperse across interstellar distances, making robust encoding, error detection, and precise temporal synchronization essential for recovery. In the microcosm of an embedded cyberdeck, similar physical realities apply: high-speed digital buses radiate high-frequency electromagnetic interference (EMI), microphonic MEMS membranes detect micro-vibrations, and processing threads contend for scarce silicon resources.
@@ -3053,7 +3623,37 @@ ls -l /dev/input/by-id/*ESP32*</code></pre>
 </div>
 
       <!-- CHAPTERS 4 TO 7 -->
-      <section id="chapter-4" class="chapter-block">
+      
+    <!-- Module 3 Course Step Navigation -->
+    <div class="module-bottom-nav">
+      <div>
+        <button class="module-nav-btn" onclick="switchModule(2)">&larr; Previous Module (2)</button>
+      </div>
+      <div style="display: flex; gap: 0.75rem;">
+        <button class="module-nav-btn" onclick="window.scrollTo({top: 0, behavior: 'smooth'});">&uarr; Module Top</button>
+        <button class="module-nav-btn primary" onclick="completeAndNext(3, 4)">Complete &amp; Next Module (4) &rarr;</button>
+      </div>
+    </div>
+    
+    <section id="chapter-4" class="chapter-block">
+
+    <!-- Module 4 Kinematics & Acoustic Array Visual Card -->
+    <div class="module-visual-card">
+      <div class="module-visual-media" style="padding: 0; background: rgba(5, 9, 20, 0.95); min-height: 180px;">
+        <div class="kinematics-force-visual" style="margin: 0; height: 100%; border: none;"></div>
+      </div>
+      <div class="module-visual-content">
+        <div class="module-visual-badge" style="color: #00f0ff; border-color: rgba(0, 240, 255, 0.35); background: rgba(0, 240, 255, 0.1);">MODULE 4 • 4-WHEEL OMNIDIRECTIONAL &amp; 3-MIC TDoA</div>
+        <h2 class="module-visual-heading">Mecanum Kinematics, Wheel Physics &amp; Acoustic Beamforming</h2>
+        <p class="module-visual-desc">Inverse kinematics for 45-degree rollers, Coulomb friction ellipses, 3-mic equilateral triangle TDoA phase correlation, and acoustic localization on RP2040 PIO.</p>
+        <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px;">
+          <span style="font-family: monospace; font-size: 0.7rem; color: #10b981; background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); padding: 2px 8px; border-radius: 4px;">45° ROLLER MATRIX</span>
+          <span style="font-family: monospace; font-size: 0.7rem; color: #00f0ff; background: rgba(0, 240, 255, 0.1); border: 1px solid rgba(0, 240, 255, 0.3); padding: 2px 8px; border-radius: 4px;">COULOMB BREAKPOINT minDuty: 18%</span>
+          <span style="font-family: monospace; font-size: 0.7rem; color: #a855f7; background: rgba(168, 85, 247, 0.1); border: 1px solid rgba(168, 85, 247, 0.3); padding: 2px 8px; border-radius: 4px;">RP2040 PIO TDoA: 16kHz</span>
+        </div>
+      </div>
+    </div>
+    
   <h2 class="chapter-title">
     <span class="ch-badge">Chapter 4</span>
     Linux Kernel Input Subsystem &amp; Low-Memory Daemons
@@ -3760,7 +4360,32 @@ class FloatingPTTWidget:
 <!-- ==============================================================================
      CHAPTER 5: SUB-SECOND CLOUD ASR & MULTI-LLM BRAIN ROUTING
      ============================================================================== -->
-<section id="chapter-5" class="chapter-block">
+
+    <!-- Module 4 Course Step Navigation -->
+    <div class="module-bottom-nav">
+      <div>
+        <button class="module-nav-btn" onclick="switchModule(3)">&larr; Previous Module (3)</button>
+      </div>
+      <div style="display: flex; gap: 0.75rem;">
+        <button class="module-nav-btn" onclick="window.scrollTo({top: 0, behavior: 'smooth'});">&uarr; Module Top</button>
+        <button class="module-nav-btn primary" onclick="completeAndNext(4, 5)">Complete &amp; Next Module (5) &rarr;</button>
+      </div>
+    </div>
+    
+    <section id="chapter-5" class="chapter-block">
+
+    <!-- Module 5 Icons8 Visual Card -->
+    <div class="module-visual-card">
+      <div class="module-visual-media">
+        <video autoplay loop muted playsinline poster="/static/assets/icons8/animated/smartwatch_sensor_poster.png"><source src="/static/assets/icons8/animated/smartwatch_sensor.mp4" type="video/mp4; codecs=hvc1"><source src="/static/assets/icons8/animated/smartwatch_sensor.webm" type="video/webm"></video>
+      </div>
+      <div class="module-visual-content">
+        <div class="module-visual-badge">MODULE 5 • KALMAN FILTER & MICROWAVE PRESENCE</div>
+        <h2 class="module-visual-heading">Sensor Fusion: QMI8658 6-Axis IMU & 24GHz Millimeter-Wave Radar</h2>
+        <p class="module-visual-desc">400kHz I2C DMA sensor acquisition, Madgwick / Extended Kalman attitude estimation, and HLK-LD2402 millimeter-wave FMCW radar human target micro-motion tracking.</p>
+      </div>
+    </div>
+    
   <h2 class="chapter-title">
     <span class="ch-badge">Chapter 5</span>
     Sub-Second Cloud ASR &amp; Multi-LLM Brain Routing
@@ -4362,7 +4987,32 @@ print('Active LLM:', cfg.get('llm.default_brain'))
 <!-- ==============================================================================
      CHAPTER 6: DISTRIBUTED AI FEDERATION & MODEL CONTEXT PROTOCOL (MCP)
      ============================================================================== -->
-<section id="chapter-6" class="chapter-block">
+
+    <!-- Module 5 Course Step Navigation -->
+    <div class="module-bottom-nav">
+      <div>
+        <button class="module-nav-btn" onclick="switchModule(4)">&larr; Previous Module (4)</button>
+      </div>
+      <div style="display: flex; gap: 0.75rem;">
+        <button class="module-nav-btn" onclick="window.scrollTo({top: 0, behavior: 'smooth'});">&uarr; Module Top</button>
+        <button class="module-nav-btn primary" onclick="completeAndNext(5, 6)">Complete &amp; Next Module (6) &rarr;</button>
+      </div>
+    </div>
+    
+    <section id="chapter-6" class="chapter-block">
+
+    <!-- Module 6 Icons8 Visual Card -->
+    <div class="module-visual-card">
+      <div class="module-visual-media">
+        <video autoplay loop muted playsinline poster="/static/assets/icons8/animated/ai_brain_connected_to_smart_devices_poster.png"><source src="/static/assets/icons8/animated/ai_brain_connected_to_smart_devices.mp4" type="video/mp4; codecs=hvc1"><source src="/static/assets/icons8/animated/ai_brain_connected_to_smart_devices.webm" type="video/webm"></video>
+      </div>
+      <div class="module-visual-content">
+        <div class="module-visual-badge">MODULE 6 • DUAL-NODE SWARM & RPC FEDERATION</div>
+        <h2 class="module-visual-heading">Federated Multi-Agent Swarm (MCP over WebSockets)</h2>
+        <p class="module-visual-desc">Model Context Protocol (MCP) JSON-RPC 2.0 over persistent LAN WebSockets, async tool invocation delegation, and SQLite WAL shared episodic memory.</p>
+      </div>
+    </div>
+    
   <h2 class="chapter-title">
     <span class="ch-badge">Chapter 6</span>
     Distributed AI Federation &amp; Model Context Protocol (MCP)
@@ -4941,7 +5591,32 @@ Test 5 PASSED: 4-turn dialogue generated, persisted, and broadcast over WebSocke
 <!-- ==============================================================================
      CHAPTER 7: MECANUM ROVER OMNIDIRECTIONAL MECHANICS & RP2040-ZERO CONTROL THEORY
      ============================================================================== -->
-<section id="chapter-7" class="chapter-block">
+
+    <!-- Module 6 Course Step Navigation -->
+    <div class="module-bottom-nav">
+      <div>
+        <button class="module-nav-btn" onclick="switchModule(5)">&larr; Previous Module (5)</button>
+      </div>
+      <div style="display: flex; gap: 0.75rem;">
+        <button class="module-nav-btn" onclick="window.scrollTo({top: 0, behavior: 'smooth'});">&uarr; Module Top</button>
+        <button class="module-nav-btn primary" onclick="completeAndNext(6, 7)">Complete &amp; Next Module (7) &rarr;</button>
+      </div>
+    </div>
+    
+    <section id="chapter-7" class="chapter-block">
+
+    <!-- Module 7 Icons8 Visual Card -->
+    <div class="module-visual-card">
+      <div class="module-visual-media">
+        <video autoplay loop muted playsinline poster="/static/assets/icons8/animated/neat_humanoid_ai_technology_for_advanced_mach_poster.png"><source src="/static/assets/icons8/animated/neat_humanoid_ai_technology_for_advanced_mach.mp4" type="video/mp4; codecs=hvc1"><source src="/static/assets/icons8/animated/neat_humanoid_ai_technology_for_advanced_mach.webm" type="video/webm"></video>
+      </div>
+      <div class="module-visual-content">
+        <div class="module-visual-badge">MODULE 7 • 20KHZ H-BRIDGE & HIGH-SPEED UART</div>
+        <h2 class="module-visual-heading">RP2040 Motor Control & FreeRTOS Dual-Core Architecture</h2>
+        <p class="module-visual-desc">Dual Cortex-M0+ task pinning, PIO-driven quadrature encoder state machines, 20kHz complementary PWM Dead-Time generation, and 921,600-baud UART protocol.</p>
+      </div>
+    </div>
+    
   <h2 class="chapter-title">
     <span class="ch-badge">Chapter 7</span>
     Mecanum Rover Omnidirectional Mechanics &amp; RP2040-Zero Control Theory
@@ -5797,7 +6472,32 @@ void RoverMotors::step(uint32_t now) {
      ============================================================================== -->
 
       <!-- CHAPTERS 8 TO 10 -->
-      <article class="chapter-block" id="chapter-8">
+      
+    <!-- Module 7 Course Step Navigation -->
+    <div class="module-bottom-nav">
+      <div>
+        <button class="module-nav-btn" onclick="switchModule(6)">&larr; Previous Module (6)</button>
+      </div>
+      <div style="display: flex; gap: 0.75rem;">
+        <button class="module-nav-btn" onclick="window.scrollTo({top: 0, behavior: 'smooth'});">&uarr; Module Top</button>
+        <button class="module-nav-btn primary" onclick="completeAndNext(7, 8)">Complete &amp; Next Module (8) &rarr;</button>
+      </div>
+    </div>
+    
+    <article class="chapter-block" id="chapter-8">
+
+    <!-- Module 8 Icons8 Visual Card -->
+    <div class="module-visual-card">
+      <div class="module-visual-media">
+        <video autoplay loop muted playsinline poster="/static/assets/icons8/animated/brain_with_circuits_poster.png"><source src="/static/assets/icons8/animated/brain_with_circuits.mp4" type="video/mp4; codecs=hvc1"><source src="/static/assets/icons8/animated/brain_with_circuits.webm" type="video/webm"></video>
+      </div>
+      <div class="module-visual-content">
+        <div class="module-visual-badge">MODULE 8 • AIR GESTURES & HAPTIC FEEDBACK</div>
+        <h2 class="module-visual-heading">Remote Air Controller: Sensor Fusion & ESP-NOW Bridge</h2>
+        <p class="module-visual-desc">Waveshare 1.3-inch ST7789 SPI display, analog dual-axis joystick calibration, QMI8658 Air Remote gestures, and ultra-low latency ESP-NOW wireless broadcast.</p>
+      </div>
+    </div>
+    
   <h2 class="chapter-title">
     <span class="ch-badge">Chapter 08</span>
     Biomimetic Spatial Audition &amp; Multi-Modal Sensor Fusion
@@ -6209,7 +6909,32 @@ void initToFSensors() {
 <!-- ==============================================================================
      CHAPTER 9
      ============================================================================== -->
-<article class="chapter-block" id="chapter-9">
+
+    <!-- Module 8 Course Step Navigation -->
+    <div class="module-bottom-nav">
+      <div>
+        <button class="module-nav-btn" onclick="switchModule(7)">&larr; Previous Module (7)</button>
+      </div>
+      <div style="display: flex; gap: 0.75rem;">
+        <button class="module-nav-btn" onclick="window.scrollTo({top: 0, behavior: 'smooth'});">&uarr; Module Top</button>
+        <button class="module-nav-btn primary" onclick="completeAndNext(8, 9)">Complete &amp; Next Module (9) &rarr;</button>
+      </div>
+    </div>
+    
+    <article class="chapter-block" id="chapter-9">
+
+    <!-- Module 9 Icons8 Visual Card -->
+    <div class="module-visual-card">
+      <div class="module-visual-media">
+        <video autoplay loop muted playsinline poster="/static/assets/icons8/animated/3d_glare_molecular_biology_laboratory_analysi_poster.png"><source src="/static/assets/icons8/animated/3d_glare_molecular_biology_laboratory_analysi.mp4" type="video/mp4; codecs=hvc1"><source src="/static/assets/icons8/animated/3d_glare_molecular_biology_laboratory_analysi.webm" type="video/webm"></video>
+      </div>
+      <div class="module-visual-content">
+        <div class="module-visual-badge">MODULE 9 • RAY-MARCHING OCCUPANCY & 12-STATE FSM</div>
+        <h2 class="module-visual-heading">ESP-NOW Radio Bridge & 3D Spatial Occupancy Mapping</h2>
+        <p class="module-visual-desc">ESP-NOW to UART0 CRC16 packet bridge, WS2812 bioluminescent status ring, Bayesian log-odds occupancy grid mapping, and 12-state autonomous navigation FSM.</p>
+      </div>
+    </div>
+    
   <h2 class="chapter-title">
     <span class="ch-badge">Chapter 09</span>
     High-Speed Radio Bridge, Visual Biocommunication &amp; 3D Log-Odds Mapping
@@ -6645,7 +7370,32 @@ pollSnapshot();</code></pre>
 <!-- ==============================================================================
      CHAPTER 10
      ============================================================================== -->
-<article class="chapter-block" id="chapter-10">
+
+    <!-- Module 9 Course Step Navigation -->
+    <div class="module-bottom-nav">
+      <div>
+        <button class="module-nav-btn" onclick="switchModule(8)">&larr; Previous Module (8)</button>
+      </div>
+      <div style="display: flex; gap: 0.75rem;">
+        <button class="module-nav-btn" onclick="window.scrollTo({top: 0, behavior: 'smooth'});">&uarr; Module Top</button>
+        <button class="module-nav-btn primary" onclick="completeAndNext(9, 10)">Complete &amp; Next Module (10) &rarr;</button>
+      </div>
+    </div>
+    
+    <article class="chapter-block" id="chapter-10">
+
+    <!-- Module 10 Icons8 Visual Card -->
+    <div class="module-visual-card">
+      <div class="module-visual-media">
+        <video autoplay loop muted playsinline poster="/static/assets/icons8/animated/3d_casual_life_rocket_in_flight_on_blue_1_poster.png"><source src="/static/assets/icons8/animated/3d_casual_life_rocket_in_flight_on_blue_1.mp4" type="video/mp4; codecs=hvc1"><source src="/static/assets/icons8/animated/3d_casual_life_rocket_in_flight_on_blue_1.webm" type="video/webm"></video>
+      </div>
+      <div class="module-visual-content">
+        <div class="module-visual-badge">MODULE 10 • CAPSTONE EMBODIED AUTONOMY</div>
+        <h2 class="module-visual-heading">System Integration, Biomimicry & Cosmic Epistemology</h2>
+        <p class="module-visual-desc">Complete cyberdeck & rover integration, IIT 4.0 integrated information dynamics, evolutionary co-evolution paradigms, and field telemetry diagnostics.</p>
+      </div>
+    </div>
+    
   <h2 class="chapter-title">
     <span class="ch-badge">Chapter 10</span>
     End-to-End Cyberdeck-to-Rover Integration, Biomimetic Physical AI &amp; Cosmic Epistemology
@@ -7047,6 +7797,18 @@ python xiaozhi_dual_architecture/federation/workbench-bridge/test_federation.py<
      END OF PART 3 (CHAPTERS 8, 9, 10)
      ============================================================================== -->
 
+    
+    <!-- Module 10 Course Step Navigation -->
+    <div class="module-bottom-nav">
+      <div>
+        <button class="module-nav-btn" onclick="switchModule(9)">&larr; Previous Module (9)</button>
+      </div>
+      <div style="display: flex; gap: 0.75rem;">
+        <button class="module-nav-btn" onclick="window.scrollTo({top: 0, behavior: 'smooth'});">&uarr; Module Top</button>
+        <button class="module-nav-btn primary" onclick="alert(&quot;Congratulations! You completed all 10 Modules!&quot;)">&star; Course Completed!</button>
+      </div>
+    </div>
+    
     </main>
 
   </div>
@@ -7092,6 +7854,51 @@ python xiaozhi_dual_architecture/federation/workbench-bridge/test_federation.py<
       });
     }
 
+    
+    // Checkbox change handler with single unified update
+    
+    // Checkbox change handler with single unified update
+    
+    // Mobile Drawer Toggle (<= 850px)
+    const drawerToggle = document.getElementById('drawerToggle');
+    const sidebarToc = document.getElementById('sidebarToc');
+    const drawerOverlay = document.getElementById('drawerOverlay');
+
+    window.toggleDrawer = function(open) {
+      if (!sidebarToc || !drawerOverlay) return;
+      if (open) {
+        sidebarToc.classList.add('open');
+        drawerOverlay.classList.add('active');
+        document.body.style.overflow = 'hidden';
+      } else {
+        sidebarToc.classList.remove('open');
+        drawerOverlay.classList.remove('active');
+        document.body.style.overflow = '';
+      }
+    };
+
+    if (drawerToggle) {
+      drawerToggle.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const isOpen = sidebarToc && sidebarToc.classList.contains('open');
+        window.toggleDrawer(!isOpen);
+      });
+    }
+
+    if (drawerOverlay) {
+      drawerOverlay.addEventListener('click', () => window.toggleDrawer(false));
+    }
+
+    // Close drawer when clicking a link on mobile
+    document.querySelectorAll('.sidebar-mini-link').forEach(link => {
+      link.addEventListener('click', () => {
+        if (window.innerWidth <= 850) {
+          window.toggleDrawer(false);
+        }
+      });
+    });
+
+    // Checkbox change handler with single unified update
     document.addEventListener('change', (e) => {
       if (e.target.classList.contains('lab-checkbox')) {
         const labId = e.target.getAttribute('data-lab');
@@ -7104,6 +7911,7 @@ python xiaozhi_dual_architecture/federation/workbench-bridge/test_federation.py<
           localStorage.setItem(STORAGE_KEY, JSON.stringify([...completedLabs]));
         } catch(err) {}
         updateHUD();
+        updateCourseProgress();
       }
     });
 
@@ -7112,104 +7920,33 @@ python xiaozhi_dual_architecture/federation/workbench-bridge/test_federation.py<
         completedLabs.clear();
         localStorage.removeItem(STORAGE_KEY);
         updateHUD();
+        updateCourseProgress();
       }
     }
 
-    // 2. Mobile Drawer Toggle
-    const drawerToggle = document.getElementById('drawerToggle');
-    const sidebarToc = document.getElementById('sidebarToc');
-    const drawerOverlay = document.getElementById('drawerOverlay');
-
-    function toggleDrawer(open) {
-      if (open) {
-        sidebarToc.classList.add('open');
-        drawerOverlay.classList.add('active');
-        document.body.style.overflow = 'hidden';
-      } else {
-        sidebarToc.classList.remove('open');
-        drawerOverlay.classList.remove('active');
-        document.body.style.overflow = '';
-      }
-    }
-
-    if (drawerToggle) {
-      drawerToggle.addEventListener('click', () => {
-        const isOpen = sidebarToc.classList.contains('open');
-        toggleDrawer(!isOpen);
-      });
-    }
-
-    if (drawerOverlay) {
-      drawerOverlay.addEventListener('click', () => toggleDrawer(false));
-    }
-
-    // Close drawer when clicking a link on mobile
-    document.querySelectorAll('.sidebar-mini-link').forEach(link => {
-      link.addEventListener('click', () => {
-        if (window.innerWidth <= 850) {
-          toggleDrawer(false);
-        }
-      });
-    });
-
-    // 3. Chapter Accordion
-    function toggleChapterGroup(chNum) {
-      const list = document.getElementById(`mini-list-${chNum}`);
-      const expander = document.getElementById(`expander-${chNum}`);
-      if (list && expander) {
-        const isHidden = list.classList.toggle('hidden');
-        expander.classList.toggle('collapsed', isHidden);
-      }
-    }
-
-    // 4. Live TOC Filter
-    const searchInput = document.getElementById('tocSearch');
-    if (searchInput) {
-      searchInput.addEventListener('input', (e) => {
-        const term = e.target.value.toLowerCase().trim();
-        document.querySelectorAll('.sidebar-mini-item').forEach(item => {
-          const text = item.textContent.toLowerCase();
-          const matches = text.includes(term);
-          item.style.display = matches ? '' : 'none';
-        });
-      });
-    }
-
-    // 5. Code Block Copy Buttons
-    document.querySelectorAll('pre').forEach(pre => {
-      const btn = document.createElement('button');
-      btn.className = 'code-copy-btn';
-      btn.textContent = 'Copy';
-      btn.addEventListener('click', async () => {
-        const code = pre.querySelector('code');
-        const textToCopy = code ? code.innerText : pre.innerText;
-        try {
-          await navigator.clipboard.writeText(textToCopy);
-          btn.textContent = 'Copied!';
-          setTimeout(() => btn.textContent = 'Copy', 2000);
-        } catch(err) {
-          btn.textContent = 'Failed';
-        }
-      });
-      pre.appendChild(btn);
-    });
-
-    // 6. Scrollspy
-    const miniSections = document.querySelectorAll('section[id^="mini-"]');
-    const navItems = document.querySelectorAll('.sidebar-mini-item');
-
+    // ScrollSpy active link updater
+    let scrollTimeout;
     window.addEventListener('scroll', () => {
+      if (scrollTimeout) return;
+      scrollTimeout = setTimeout(() => {
+        scrollTimeout = null;
+        updateScrollSpy();
+      }, 100);
+    }, { passive: true });
+
+    function updateScrollSpy() {
+      const sections = document.querySelectorAll('section[id], .mini-chapter[id]');
       let currentId = '';
-      const offset = 120;
-      miniSections.forEach(sec => {
-        const top = sec.getBoundingClientRect().top;
-        if (top <= offset) {
-          currentId = sec.id;
+      const scrollPos = window.scrollY + 200;
+
+      sections.forEach(sec => {
+        if (sec.offsetTop <= scrollPos) {
+          currentId = sec.getAttribute('id');
         }
       });
 
       if (currentId) {
-        navItems.forEach(item => {
+        document.querySelectorAll('.sidebar-mini-item').forEach(item => {
           if (item.getAttribute('data-mini-id') === currentId) {
             item.classList.add('active');
           } else {
@@ -7217,10 +7954,272 @@ python xiaozhi_dual_architecture/federation/workbench-bridge/test_federation.py<
           }
         });
       }
-    }, { passive: true });
+    }
 
-    // Initialize HUD on load
+    // ==========================================================================
+    // STACKED COURSE INTERACTION CONTROLLER & FLOATING INDEX
+    // ==========================================================================
+    window.currentModule = 1;
+    window.courseMode = localStorage.getItem('course_view_mode') || 'stacked';
+
+    window.setCourseLayoutMode = function(mode) {
+      window.courseMode = mode;
+      localStorage.setItem('course_view_mode', mode);
+      const body = document.body;
+      const btnStacked = document.getElementById('btnStackedMode');
+      const btnFull = document.getElementById('btnFullMode');
+      const toggleText = document.getElementById('floatingModeToggleText');
+
+      if (mode === 'stacked') {
+        body.classList.add('course-stacked-mode');
+        if (btnStacked) btnStacked.classList.add('active');
+        if (btnFull) btnFull.classList.remove('active');
+        if (toggleText) toggleText.textContent = 'Switch to Infinite Scroll';
+        window.switchModule(window.currentModule, false);
+      } else {
+        body.classList.remove('course-stacked-mode');
+        if (btnStacked) btnStacked.classList.remove('active');
+        if (btnFull) btnFull.classList.add('active');
+        if (toggleText) toggleText.textContent = 'Switch to Stacked View';
+        for (let i = 1; i <= 10; i++) {
+          const ch = document.getElementById('chapter-' + i);
+          if (ch) ch.classList.add('active-module');
+        }
+      }
+    };
+
+    window.switchModule = function(modNum, scroll = true) {
+      window.currentModule = modNum;
+      localStorage.setItem('course_active_module', modNum);
+
+      // Update Stepper buttons
+      document.querySelectorAll('.module-step-btn').forEach(btn => {
+        const n = parseInt(btn.getAttribute('data-mod-num'), 10);
+        btn.classList.toggle('active', n === modNum);
+      });
+
+      // Update floating index list
+      document.querySelectorAll('.floating-index-mod-item').forEach((item, idx) => {
+        item.classList.toggle('active', (idx + 1) === modNum);
+      });
+      const badge = document.getElementById('floatingIndexBadge');
+      if (badge) badge.textContent = `Mod ${modNum}/10`;
+
+      // Update chapter visibility in stacked mode
+      for (let i = 1; i <= 10; i++) {
+        const ch = document.getElementById('chapter-' + i);
+        if (ch) {
+          if (window.courseMode === 'stacked') {
+            ch.classList.toggle('active-module', i === modNum);
+          } else {
+            ch.classList.add('active-module');
+          }
+        }
+      }
+
+      // Scroll to chapter or stepper
+      if (scroll) {
+        const target = document.getElementById('chapter-' + modNum);
+        if (target) {
+          target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }
+
+      window.updateCourseProgress();
+    };
+
+    window.completeAndNext = function(current, next) {
+      if (next) {
+        window.switchModule(next, true);
+      }
+    };
+
+    window.updateCourseProgress = function() {
+      const checked = document.querySelectorAll('.lab-checkbox:checked').length;
+      const total = 50;
+      const pct = Math.round((checked / total) * 100);
+      const textEl = document.getElementById('courseProgressText');
+      if (textEl) {
+        textEl.textContent = `• Module ${window.currentModule} of 10 • ${checked} / ${total} Labs Complete (${pct}%)`;
+      }
+      const label = document.getElementById('floatingIndexLabel');
+      if (label) {
+        label.textContent = `${pct}% Done`;
+      }
+    };
+
+    window.toggleFloatingIndex = function(forceState) {
+      const popover = document.getElementById('floatingIndexPopover');
+      if (!popover) return;
+      if (typeof forceState === 'boolean') {
+        popover.classList.toggle('open', forceState);
+      } else {
+        popover.classList.toggle('open');
+      }
+    };
+
+    // Close floating index when pressing Escape
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        window.toggleFloatingIndex(false);
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'i') {
+        e.preventDefault();
+        window.toggleFloatingIndex();
+      }
+    });
+
+    // Close floating index when clicking outside
+    document.addEventListener('click', (e) => {
+      const popover = document.getElementById('floatingIndexPopover');
+      const btn = document.getElementById('floatingIndexBtn');
+      if (popover && popover.classList.contains('open')) {
+        if (!popover.contains(e.target) && !btn.contains(e.target)) {
+          window.toggleFloatingIndex(false);
+        }
+      }
+    });
+
+    // Intercept TOC link clicks to automatically switch module
+    document.querySelectorAll('.sidebar-mini-link').forEach(link => {
+      link.addEventListener('click', (e) => {
+        const href = link.getAttribute('href');
+        if (href && href.startsWith('#mini-')) {
+          const parts = href.replace('#mini-', '').split('-');
+          const ch = parseInt(parts[0], 10);
+          if (ch && window.courseMode === 'stacked') {
+            window.switchModule(ch, false);
+          }
+        }
+      });
+    });
+
+    // Hash change handler for deep linking (#chapter-X or #mini-X-Y)
+    function handleHashDeepLink() {
+      const hash = window.location.hash;
+      if (!hash) return;
+      if (hash.startsWith('#chapter-')) {
+        const ch = parseInt(hash.replace('#chapter-', ''), 10);
+        if (ch >= 1 && ch <= 10) window.switchModule(ch, true);
+      } else if (hash.startsWith('#mini-')) {
+        const parts = hash.replace('#mini-', '').split('-');
+        const ch = parseInt(parts[0], 10);
+        if (ch >= 1 && ch <= 10) {
+          window.switchModule(ch, false);
+          setTimeout(() => {
+            const el = document.getElementById(hash.substring(1));
+            if (el) el.scrollIntoView({ behavior: 'smooth' });
+          }, 100);
+        }
+      }
+    }
+
+    window.addEventListener('hashchange', handleHashDeepLink);
+
+    // Initial load setup
+    const savedMod = parseInt(localStorage.getItem('course_active_module'), 10) || 1;
+    window.currentModule = savedMod;
+    window.setCourseLayoutMode(window.courseMode);
+    handleHashDeepLink();
     updateHUD();
+    setTimeout(window.updateCourseProgress, 200);
+  </script>
+
+  <!-- FLOATING COURSE INDEX (Responsive, non-intrusive floating index component) -->
+  <button class="floating-index-btn" id="floatingIndexBtn" onclick="toggleFloatingIndex()" aria-label="Toggle Course Index">
+    <span>📚</span>
+    <span id="floatingIndexLabel">Index</span>
+    <span class="floating-index-pill-badge" id="floatingIndexBadge">Mod 1/10</span>
+  </button>
+
+  <aside class="floating-index-popover" id="floatingIndexPopover" aria-label="Course Floating Quick Index">
+    <div class="floating-index-header">
+      <h4><span>🧭</span> Course Floating Index</h4>
+      <button class="floating-index-close" onclick="toggleFloatingIndex(false)" aria-label="Close Index">✕</button>
+    </div>
+    <div class="floating-index-body" id="floatingIndexBody">
+      <!-- 10 Module Quick Jump Cards -->
+      <a class="floating-index-mod-item" href="#chapter-1" onclick="switchModule(1); toggleFloatingIndex(false); return false;">
+        <div><span class="floating-index-mod-tag">M1</span> 1. Cyberdeck Architecture</div>
+        <span style="font-size: 0.7rem; color: var(--text-muted);">5 Labs</span>
+      </a>
+      <a class="floating-index-mod-item" href="#chapter-2" onclick="switchModule(2); toggleFloatingIndex(false); return false;">
+        <div><span class="floating-index-mod-tag">M2</span> 2. Embedded Vision C++20</div>
+        <span style="font-size: 0.7rem; color: var(--text-muted);">5 Labs</span>
+      </a>
+      <a class="floating-index-mod-item" href="#chapter-3" onclick="switchModule(3); toggleFloatingIndex(false); return false;">
+        <div><span class="floating-index-mod-tag">M3</span> 3. Voice Broker & Speech</div>
+        <span style="font-size: 0.7rem; color: var(--text-muted);">5 Labs</span>
+      </a>
+      <a class="floating-index-mod-item" href="#chapter-4" onclick="switchModule(4); toggleFloatingIndex(false); return false;">
+        <div><span class="floating-index-mod-tag">M4</span> 4. Mecanum & Acoustic Array</div>
+        <span style="font-size: 0.7rem; color: var(--text-muted);">5 Labs</span>
+      </a>
+      <a class="floating-index-mod-item" href="#chapter-5" onclick="switchModule(5); toggleFloatingIndex(false); return false;">
+        <div><span class="floating-index-mod-tag">M5</span> 5. IMU & Radar Fusion</div>
+        <span style="font-size: 0.7rem; color: var(--text-muted);">5 Labs</span>
+      </a>
+      <a class="floating-index-mod-item" href="#chapter-6" onclick="switchModule(6); toggleFloatingIndex(false); return false;">
+        <div><span class="floating-index-mod-tag">M6</span> 6. Federated Multi-Agent</div>
+        <span style="font-size: 0.7rem; color: var(--text-muted);">5 Labs</span>
+      </a>
+      <a class="floating-index-mod-item" href="#chapter-7" onclick="switchModule(7); toggleFloatingIndex(false); return false;">
+        <div><span class="floating-index-mod-tag">M7</span> 7. Motor Control & PIO</div>
+        <span style="font-size: 0.7rem; color: var(--text-muted);">5 Labs</span>
+      </a>
+      <a class="floating-index-mod-item" href="#chapter-8" onclick="switchModule(8); toggleFloatingIndex(false); return false;">
+        <div><span class="floating-index-mod-tag">M8</span> 8. Air Remote Controller</div>
+        <span style="font-size: 0.7rem; color: var(--text-muted);">5 Labs</span>
+      </a>
+      <a class="floating-index-mod-item" href="#chapter-9" onclick="switchModule(9); toggleFloatingIndex(false); return false;">
+        <div><span class="floating-index-mod-tag">M9</span> 9. Spatial Occupancy Map</div>
+        <span style="font-size: 0.7rem; color: var(--text-muted);">5 Labs</span>
+      </a>
+      <a class="floating-index-mod-item" href="#chapter-10" onclick="switchModule(10); toggleFloatingIndex(false); return false;">
+        <div><span class="floating-index-mod-tag">M10</span> 10. Capstone Autonomy</div>
+        <span style="font-size: 0.7rem; color: var(--text-muted);">5 Labs</span>
+      </a>
+    </div>
+    <div class="floating-index-footer">
+      <button class="floating-index-footer-btn" onclick="setCourseLayoutMode(courseMode === 'stacked' ? 'full' : 'stacked');">
+        <span id="floatingModeToggleText">Toggle Mode</span>
+      </button>
+      <button class="floating-index-footer-btn" onclick="window.scrollTo({top: 0, behavior: 'smooth'}); toggleFloatingIndex(false);">
+        <span>↑ Back to Top</span>
+      </button>
+    </div>
+  </aside>
+
+  <script src="/static/reading_slider.js"></script>
+  <script src="/static/bento_animations.js"></script>
+  <script>
+    // Real-Time Sidebar Scroll-Spy
+    (function() {
+      const miniSections = document.querySelectorAll('.mini-chapter-section, .chapter-block');
+      const tocLinks = document.querySelectorAll('.sidebar-mini-link');
+      if (!miniSections.length || !tocLinks.length) return;
+
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            const id = entry.target.id;
+            if (!id) return;
+            tocLinks.forEach(link => {
+              const href = link.getAttribute('href');
+              const item = link.closest('.sidebar-mini-item');
+              if (href === '#' + id) {
+                document.querySelectorAll('.sidebar-mini-item.active').forEach(el => el.classList.remove('active'));
+                if (item) {
+                  item.classList.add('active');
+                  item.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+                }
+              }
+            });
+          }
+        });
+      }, { rootMargin: '-80px 0px -60% 0px', threshold: 0.1 });
+
+      miniSections.forEach(s => observer.observe(s));
+    })();
   </script>
 </body>
 </html>
