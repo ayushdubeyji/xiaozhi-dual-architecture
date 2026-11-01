@@ -6,6 +6,7 @@ idf_component_register(
         "../src/usb_hid_trigger.c"
         "../src/hardware_controls.c"
         "../src/haptics_engine.c"
+        "../src/ringlight_driver.c"
         "../src/ws2812_animations.c"
     INCLUDE_DIRS
         "../include"

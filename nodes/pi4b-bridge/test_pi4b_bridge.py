@@ -451,6 +451,98 @@ class TestS3FlasherAndResourceManagement(unittest.TestCase):
         gaussian_peak = math.exp(-0.5 * diff_center * diff_center)
         self.assertEqual(gaussian_peak, 1.0)
 
+    def test_camera_focus_handler(self):
+        handler = hid_wake_daemon.CameraFocusHandler(udp_port=8086)
+        try:
+            self.assertEqual(handler.current_focus_dpt, 0.0)
+            # Continuous rotation: +1 step -> +0.20 dpt
+            dpt = handler.handle_step(1)
+            self.assertAlmostEqual(dpt, 0.20)
+            self.assertAlmostEqual(handler.current_focus_dpt, 0.20)
+
+            # +4 steps -> +0.80 dpt (total 1.00)
+            dpt = handler.handle_step(4)
+            self.assertAlmostEqual(dpt, 1.00)
+
+            # -2 steps -> -0.40 dpt (total 0.60)
+            dpt = handler.handle_step(-2)
+            self.assertAlmostEqual(dpt, 0.60)
+
+            # Clamping lower bound (0.0 dpt / infinity)
+            dpt = handler.handle_step(-10)
+            self.assertEqual(dpt, 0.0)
+
+            # Clamping upper bound (10.0 dpt / macro)
+            dpt = handler.handle_step(100)
+            self.assertEqual(dpt, 10.0)
+
+            # Absolute focus setting
+            dpt = handler.set_absolute_focus(3.75)
+            self.assertAlmostEqual(dpt, 3.75)
+            self.assertEqual(handler.set_absolute_focus(-5.0), 0.0)
+            self.assertEqual(handler.set_absolute_focus(15.0), 10.0)
+        finally:
+            handler.close()
+
+    def test_cdc_camera_focus_parsing(self):
+        mock_bridge = MagicMock()
+        serial_bridge = hid_wake_daemon.S3SerialBridge(ws_bridge=mock_bridge)
+        try:
+            # Test S3 CDC command line: "CMD:CAMERA_FOCUS 1\n"
+            line = b"CMD:CAMERA_FOCUS 1\n"
+            buffer = bytearray(line)
+            nl_idx = buffer.find(b"\n")
+            line_str = bytes(buffer[:nl_idx]).decode("ascii")
+            if line_str.startswith("CMD:CAMERA_FOCUS") or line_str.startswith("CMD:FOCUS") or line_str.startswith("CAM_FOCUS:"):
+                parts = line_str.strip().replace(":", " ").split()
+                if "." in parts[-1]:
+                    serial_bridge.focus_handler.set_absolute_focus(float(parts[-1]))
+                else:
+                    serial_bridge.focus_handler.handle_step(int(parts[-1]))
+            self.assertAlmostEqual(serial_bridge.focus_handler.current_focus_dpt, 0.20)
+
+            # Test negative step: "CMD:CAMERA_FOCUS -1\n"
+            line2 = b"CMD:CAMERA_FOCUS -1\n"
+            buffer2 = bytearray(line2)
+            nl_idx2 = buffer2.find(b"\n")
+            line_str2 = bytes(buffer2[:nl_idx2]).decode("ascii")
+            if line_str2.startswith("CMD:CAMERA_FOCUS"):
+                parts2 = line_str2.strip().replace(":", " ").split()
+                serial_bridge.focus_handler.handle_step(int(parts2[-1]))
+            self.assertAlmostEqual(serial_bridge.focus_handler.current_focus_dpt, 0.0)
+
+            # Test absolute float line: "CAM_FOCUS: 4.80\n"
+            line3 = b"CAM_FOCUS: 4.80\n"
+            buffer3 = bytearray(line3)
+            nl_idx3 = buffer3.find(b"\n")
+            line_str3 = bytes(buffer3[:nl_idx3]).decode("ascii")
+            if line_str3.startswith("CAM_FOCUS:"):
+                parts3 = line_str3.strip().replace(":", " ").split()
+                serial_bridge.focus_handler.set_absolute_focus(float(parts3[-1]))
+            self.assertAlmostEqual(serial_bridge.focus_handler.current_focus_dpt, 4.80)
+        finally:
+            serial_bridge.close()
+
+    def test_focus_udp_bridging(self):
+        mock_serial = MagicMock()
+        mock_serial.focus_handler = hid_wake_daemon.CameraFocusHandler(udp_port=8086)
+        try:
+            bridge = hid_wake_daemon.RoverUdpBridge(serial_bridge=mock_serial)
+
+            # Text CMD:CAMERA_FOCUS 1
+            bridge.datagram_received(b"CMD:CAMERA_FOCUS 1\n", ("127.0.0.1", 12345))
+            self.assertAlmostEqual(mock_serial.focus_handler.current_focus_dpt, 0.20)
+
+            # Text CAM_FOCUS: 2.50
+            bridge.datagram_received(b"CAM_FOCUS: 2.50\n", ("127.0.0.1", 12345))
+            self.assertAlmostEqual(mock_serial.focus_handler.current_focus_dpt, 2.50)
+
+            # JSON {"focus": 1}
+            bridge.datagram_received(b'{"cmd": "focus", "step": 1}', ("127.0.0.1", 12345))
+            self.assertAlmostEqual(mock_serial.focus_handler.current_focus_dpt, 2.70)
+        finally:
+            mock_serial.focus_handler.close()
+
 
 if __name__ == "__main__":
     unittest.main()

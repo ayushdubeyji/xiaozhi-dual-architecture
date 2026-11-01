@@ -46,6 +46,11 @@ void ws2812_set_audio_energy(uint8_t energy);
  */
 void ws2812_flash_wake(void);
 
+/**
+ * @brief Set overall brightness percentage (0..100).
+ */
+void ws2812_set_brightness(uint8_t brightness_pct);
+
 #ifdef __cplusplus
 }
 #endif

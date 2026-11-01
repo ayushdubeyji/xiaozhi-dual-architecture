@@ -328,6 +328,16 @@ static void process_host_command(const char *cmd_line)
             tud_cdc_write_str(ack);
             tud_cdc_write_flush();
         }
+    } else if (strncmp(cmd_line, "CMD:LED_BRIGHTNESS", 18) == 0 || strncmp(cmd_line, "CMD:RING_BRIGHTNESS", 19) == 0) {
+        int bright = 100;
+        const char *arg = strchr(cmd_line, ' ');
+        if (arg && sscanf(arg, "%d", &bright) >= 1) {
+            ws2812_set_brightness((uint8_t)bright);
+            char ack[48];
+            snprintf(ack, sizeof(ack), "LED_BRIGHT_ACK:%d\n", bright);
+            tud_cdc_write_str(ack);
+            tud_cdc_write_flush();
+        }
     } else if (strcmp(cmd_line, "CMD:BOOTLOADER") == 0 || strcmp(cmd_line, "s3_bootloader") == 0) {
         ESP_LOGW(TAG, "Rebooting into ROM download mode via RTC_CNTL_FORCE_DOWNLOAD_BOOT");
         tud_cdc_write_str("ACK:BOOTLOADER\n");

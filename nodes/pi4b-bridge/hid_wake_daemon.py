@@ -61,6 +61,8 @@ DEFAULT_SERIAL_PORT = "/dev/ttyS3Zero"
 FALLBACK_SERIAL_PORT = "/dev/ttyACM0"
 DEFAULT_ROVER_UDP_PORT = 8085
 DEFAULT_TELEM_UDP_PORT = 8090
+DEFAULT_FOCUS_UDP_PORT = 8086
+FOCUS_STEP_SENSITIVITY_DPT = 0.20  # Tuned sensitivity: 0.20 diopters per detent (50 clicks across 0..10 dpt)
 DEFAULT_XIAOZHI_WS_URL = "ws://127.0.0.1:8765/ws/xiaozhi"
 
 
@@ -224,7 +226,17 @@ class RoverUdpBridge(asyncio.DatagramProtocol):
         elif len(data) > 0:
             try:
                 text = data.decode("utf-8", errors="ignore").strip()
-                if text.startswith("CMD:") or text.startswith("HAPTIC") or text.startswith("LED_PATTERN"):
+                if text.startswith("CMD:CAMERA_FOCUS") or text.startswith("CMD:FOCUS") or text.startswith("FOCUS") or text.startswith("CAM_FOCUS:"):
+                    parts = text.replace(":", " ").split()
+                    if len(parts) >= 2:
+                        try:
+                            if "." in parts[-1]:
+                                self.serial_bridge.focus_handler.set_absolute_focus(float(parts[-1]))
+                            else:
+                                self.serial_bridge.focus_handler.handle_step(int(parts[-1]))
+                        except ValueError:
+                            pass
+                elif text.startswith("CMD:") or text.startswith("HAPTIC") or text.startswith("LED_PATTERN"):
                     if not text.startswith("CMD:"):
                         if ":" in text:
                             parts = text.split(":")
@@ -242,17 +254,74 @@ class RoverUdpBridge(asyncio.DatagramProtocol):
                         cmd = f"CMD:HAPTIC {eff} {inten} {dur}"
                         logger.info(f"Bridging UDP JSON haptic from {addr}: {cmd}")
                         self.serial_bridge.write_command(cmd)
-                    elif "led" in text.lower() or "pattern" in payload:
-                        pat = payload.get("pattern", payload.get("pattern_id", 0))
-                        hue = payload.get("hue", payload.get("hue_offset", 0))
-                        speed = payload.get("speed", 100)
-                        cmd = f"CMD:LED_PATTERN {pat} {hue} {speed}"
-                        logger.info(f"Bridging UDP JSON LED pattern from {addr}: {cmd}")
+                    elif "led" in text.lower() or "pattern" in payload or "brightness" in payload:
+                        if "brightness" in payload:
+                            bright = payload.get("brightness", 100)
+                            cmd = f"CMD:LED_BRIGHTNESS {bright}"
+                        else:
+                            pat = payload.get("pattern", payload.get("pattern_id", 0))
+                            hue = payload.get("hue", payload.get("hue_offset", 0))
+                            speed = payload.get("speed", 100)
+                            cmd = f"CMD:LED_PATTERN {pat} {hue} {speed}"
+                        logger.info(f"Bridging UDP JSON LED from {addr}: {cmd}")
                         self.serial_bridge.write_command(cmd)
+                    elif "focus" in text.lower() or "step" in payload or "diopters" in payload:
+                        if "diopters" in payload or "focus_dpt" in payload:
+                            dpt = float(payload.get("diopters", payload.get("focus_dpt", 0.0)))
+                            self.serial_bridge.focus_handler.set_absolute_focus(dpt)
+                        else:
+                            step = int(payload.get("step", payload.get("focus", payload.get("focus_step", 1))))
+                            self.serial_bridge.focus_handler.handle_step(step)
                 else:
                     logger.debug(f"Received non-A7 UDP datagram len={len(data)} from {addr}")
             except Exception as e:
                 logger.debug(f"Received non-A7 UDP datagram error: {e}")
+
+
+class CameraFocusHandler:
+    """Continuous camera lens focus handler without click toggle.
+    Receives rotational steps from 56mm hollow encoder (via S3 CDC) or network UDP,
+    smoothly updates diopter target with tuned sensitivity, and broadcasts to camera subscribers.
+    """
+
+    def __init__(self, udp_port: int = DEFAULT_FOCUS_UDP_PORT):
+        self.udp_port = udp_port
+        self.current_focus_dpt = 0.0  # 0.0 (infinity) to 10.0 (macro)
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        try:
+            self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+        except Exception:
+            pass
+
+    def handle_step(self, step: int) -> float:
+        # Continuous rotation without click toggle; sensitivity tuned
+        new_dpt = self.current_focus_dpt + (step * FOCUS_STEP_SENSITIVITY_DPT)
+        self.current_focus_dpt = round(max(0.0, min(10.0, new_dpt)), 2)
+
+        # Broadcast UDP to imx519_cam_gui or camera daemon on port 8086
+        msg = f"CAM_FOCUS:{self.current_focus_dpt:.2f}\n".encode("ascii")
+        try:
+            self.sock.sendto(msg, ("127.0.0.1", self.udp_port))
+        except Exception:
+            pass
+
+        logger.info(f"Camera Focus continuous rotation: {self.current_focus_dpt:.2f} dpt (step={step:+d})")
+        return self.current_focus_dpt
+
+    def set_absolute_focus(self, diopters: float) -> float:
+        self.current_focus_dpt = round(max(0.0, min(10.0, diopters)), 2)
+        msg = f"CAM_FOCUS:{self.current_focus_dpt:.2f}\n".encode("ascii")
+        try:
+            self.sock.sendto(msg, ("127.0.0.1", self.udp_port))
+        except Exception:
+            pass
+        return self.current_focus_dpt
+
+    def close(self):
+        try:
+            self.sock.close()
+        except Exception:
+            pass
 
 
 class S3SerialBridge:
@@ -265,6 +334,7 @@ class S3SerialBridge:
         self.writer: Optional[asyncio.StreamWriter] = None
         self.is_open = False
         self.telem_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.focus_handler = CameraFocusHandler()
 
     def find_serial_port(self) -> Optional[str]:
         for p in [DEFAULT_SERIAL_PORT, FALLBACK_SERIAL_PORT, "/dev/ttyACM1"]:
@@ -300,6 +370,16 @@ class S3SerialBridge:
                 self.writer.write(framed)
             except Exception as e:
                 logger.warning(f"Error writing rover packet to S3 CDC: {e}")
+
+    def close(self):
+        try:
+            self.telem_sock.close()
+        except Exception:
+            pass
+        try:
+            self.focus_handler.close()
+        except Exception:
+            pass
 
     async def run(self):
         while True:
@@ -387,9 +467,26 @@ class S3SerialBridge:
                                     except Exception:
                                         pass
                                     continue
+                                elif line_str.startswith("CMD:CAMERA_FOCUS") or line_str.startswith("CMD:FOCUS") or line_str.startswith("CAM_FOCUS:"):
+                                    buffer = buffer[nl_idx + 1:]
+                                    parts = line_str.strip().replace(":", " ").split()
+                                    if len(parts) >= 2:
+                                        try:
+                                            if "." in parts[-1]:
+                                                self.focus_handler.set_absolute_focus(float(parts[-1]))
+                                            else:
+                                                step = int(parts[-1])
+                                                self.focus_handler.handle_step(step)
+                                        except ValueError:
+                                            pass
+                                    continue
                                 elif line_str.startswith("RNDIS_STATUS:") or line_str.startswith("PONG:"):
                                     buffer = buffer[nl_idx + 1:]
                                     logger.info(f"S3 CDC: {line_str}")
+                                    continue
+                                else:
+                                    buffer = buffer[nl_idx + 1:]
+                                    logger.debug(f"S3 CDC: {line_str}")
                                     continue
                             except UnicodeDecodeError:
                                 pass

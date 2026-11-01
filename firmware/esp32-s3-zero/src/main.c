@@ -97,7 +97,7 @@ void app_main(void)
     }
     hardware_controls_start_task();
 
-    // 7. Initialize Haptics Engine (LEDC 15 kHz PWM on GPIO 16)
+    // 7. Initialize Haptics Engine (LEDC 15 kHz PWM on GPIO 8)
     ret = haptics_engine_init();
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to init haptics engine: %s", esp_err_to_name(ret));

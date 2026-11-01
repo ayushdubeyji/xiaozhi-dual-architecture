@@ -16,8 +16,10 @@ HAPTIC_LEVELS = [("Off", 0), ("Subtle", 80), ("Crisp", 180), ("Strong", 255)]
 LED_THEMES = [
     ("🌌 Cosmic Nebula", 0),
     ("✨ Cyberpunk Aurora", 1),
+    ("🪐 Orbital Amber", 2),
     ("⚡ Quantum Wave", 3),
-    ("🔥 Solar Flare", 4)
+    ("🔥 Solar Flare", 4),
+    ("🌿 Drive Emerald", 5)
 ]
 
 
@@ -80,12 +82,13 @@ class SettingsApp:
     def __init__(self, root):
         self.root = root
         self.root.title("Display & Hardware Settings")
-        self.root.geometry("760x450+15+15")
+        self.root.geometry("760x480+15+15")
         self.root.configure(bg="#0b132b")
         self.root.resizable(False, False)
 
         self.current_theme_id = 0
         self.current_hue = 0
+        self.ringlight_brightness = 100
         self.haptic_intensity = 180
 
         self._build_ui()
@@ -126,8 +129,8 @@ class SettingsApp:
                           command=lambda m=mode: set_orientation(m))
             b.pack(side="left", expand=True, fill="x", padx=1)
 
-        # --- Section 2: Haptics & LED Aesthetics Card ---
-        card = tk.LabelFrame(self.root, text=" Haptics & LED Aesthetics (ESP32-S3 GPIO 16 / 21) ",
+        # --- Section 2: Haptics & Ringlight Aesthetics Card ---
+        card = tk.LabelFrame(self.root, text=" Haptics & Ringlight Aesthetics (ESP32-S3 GPIO 8 / 10) ",
                              font=("Inter", 10, "bold"), fg="#00f5d4", bg="#0b132b", padx=10, pady=4)
         card.pack(fill="x", padx=14, pady=3)
 
@@ -188,6 +191,19 @@ class SettingsApp:
         self.hue_scale.set(0)
         self.hue_scale.pack(side="left", fill="x", expand=True, padx=4)
 
+        # Ringlight Brightness Row
+        bright_row = tk.Frame(card, bg="#0b132b")
+        bright_row.pack(fill="x", pady=2)
+
+        bright_lbl = tk.Label(bright_row, text="Ringlight Brightness (0-100%):", font=("Inter", 8, "bold"), fg="#e0e1dd", bg="#0b132b")
+        bright_lbl.pack(side="left", padx=(0, 6))
+
+        self.bright_scale = tk.Scale(bright_row, from_=0, to=100, orient="horizontal", width=12, sliderlength=24,
+                                     font=("Inter", 8), command=self._on_brightness_changed, bg="#0b132b", fg="#ffffff",
+                                     activebackground="#00f5d4", highlightthickness=0)
+        self.bright_scale.set(100)
+        self.bright_scale.pack(side="left", fill="x", expand=True, padx=4)
+
         # --- Section 3: Bottom Screen Off Action ---
         a_frame = tk.Frame(self.root, bg="#0b132b")
         a_frame.pack(fill="x", padx=14, pady=(4, 6))
@@ -221,6 +237,10 @@ class SettingsApp:
     def _on_hue_changed(self, val):
         self.current_hue = int(float(val))
         self._dispatch_led_pattern()
+
+    def _on_brightness_changed(self, val):
+        self.ringlight_brightness = int(float(val))
+        send_s3_command(f"CMD:LED_BRIGHTNESS {self.ringlight_brightness}\n")
 
     def _dispatch_led_pattern(self):
         send_s3_command(f"CMD:LED_PATTERN {self.current_theme_id} {self.current_hue} 100\n")

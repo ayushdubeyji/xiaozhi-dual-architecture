@@ -14,6 +14,7 @@
 #include "board_pins.h"
 #include "usb_hid_trigger.h"
 #include "haptics_engine.h"
+#include "ringlight_driver.h"
 
 static const char *TAG = "hardware_controls";
 
@@ -34,9 +35,8 @@ static int s_tilt_us = GIMBAL_CENTER_US;
 static int8_t s_last_vx = 0;
 static int8_t s_last_vy = 0;
 static uint8_t s_stop_burst_count = 0;
-static uint8_t s_last_enc_state = 0;
-static int8_t s_enc_accum = 0;
 
+// Quadrature Gray-Code Transition Table
 static const int8_t s_enc_transitions[16] = {
      0,  1, -1,  0,
     -1,  0,  0,  1,
@@ -44,13 +44,23 @@ static const int8_t s_enc_transitions[16] = {
      0, -1,  1,  0
 };
 
+// 1. 56mm Hollow Shaft Encoder (Camera Focus Ring - GP7 & GP9, No Click Switch)
+static uint8_t s_last_hollow_state = 0;
+static int8_t s_hollow_accum = 0;
+
+// 2. Mouse Scroll Wheel (GP12 & GP13)
+static uint8_t s_last_mouse_state = 0;
+static int8_t s_mouse_accum = 0;
+
 esp_err_t hardware_controls_init(void)
 {
-    ESP_LOGI(TAG, "Initializing Hardware Controls (Joystick ADC1: VRx=GP%d, VRy=GP%d, SW=GP%d | Encoder: A=GP%d, B=GP%d)",
-             BOARD_PIN_JOY_VRX, BOARD_PIN_JOY_VRY, BOARD_PIN_JOY_SW,
-             BOARD_PIN_ENC_A, BOARD_PIN_ENC_B);
+    ESP_LOGI(TAG, "Initializing Hardware Controls:");
+    ESP_LOGI(TAG, " - Joystick ADC1: VRx=GP%d (CH1), VRy=GP%d (CH2)", BOARD_PIN_JOY_VRX, BOARD_PIN_JOY_VRY);
+    ESP_LOGI(TAG, " - Shared SW (PTT/Click): GP%d (Active LOW, Pull-up)", BOARD_PIN_SHARED_SW);
+    ESP_LOGI(TAG, " - 56mm Hollow Focus Ring: A=GP%d, B=GP%d (Continuous, No Click)", BOARD_PIN_HOLLOW_ENC_A, BOARD_PIN_HOLLOW_ENC_B);
+    ESP_LOGI(TAG, " - Mouse Scroll Wheel: A=GP%d, B=GP%d", BOARD_PIN_MOUSE_ENC_A, BOARD_PIN_MOUSE_ENC_B);
 
-    // 1. Initialize ADC1 for 2-axis Joystick
+    // 1. Initialize ADC1 for 2-axis Joystick (VRx=GP2, VRy=GP3)
     adc_oneshot_unit_init_cfg_t init_cfg = {
         .unit_id = ADC_UNIT_1,
         .ulp_mode = ADC_ULP_MODE_DISABLE,
@@ -65,8 +75,8 @@ esp_err_t hardware_controls_init(void)
         .bitwidth = ADC_BITWIDTH_DEFAULT,
         .atten = ADC_ATTEN_DB_12,
     };
-    ESP_ERROR_CHECK(adc_oneshot_config_channel(s_adc1_handle, ADC_CHANNEL_1, &chan_cfg)); // GPIO 2
-    ESP_ERROR_CHECK(adc_oneshot_config_channel(s_adc1_handle, ADC_CHANNEL_2, &chan_cfg)); // GPIO 3
+    ESP_ERROR_CHECK(adc_oneshot_config_channel(s_adc1_handle, ADC_CHANNEL_1, &chan_cfg)); // GPIO 2 (VRx)
+    ESP_ERROR_CHECK(adc_oneshot_config_channel(s_adc1_handle, ADC_CHANNEL_2, &chan_cfg)); // GPIO 3 (VRy)
 
     // 2. Calibrate Joystick Center Offset
     int sum_x = 0, sum_y = 0;
@@ -82,23 +92,37 @@ esp_err_t hardware_controls_init(void)
     s_center_y = sum_y / 16;
     ESP_LOGI(TAG, "Joystick Calibrated: Center X = %d, Center Y = %d", s_center_x, s_center_y);
 
-    // 3. Configure Rotary Encoder GPIOs (Internal Pull-Up)
-    gpio_config_t enc_cfg = {
-        .pin_bit_mask = (1ULL << BOARD_PIN_ENC_A) | (1ULL << BOARD_PIN_ENC_B),
+    // 3. Configure 56mm Hollow Shaft Encoder GPIOs (GP7 & GP9, Internal Pull-Up, No Click)
+    gpio_config_t hollow_cfg = {
+        .pin_bit_mask = (1ULL << BOARD_PIN_HOLLOW_ENC_A) | (1ULL << BOARD_PIN_HOLLOW_ENC_B),
         .mode = GPIO_MODE_INPUT,
         .pull_up_en = GPIO_PULLUP_ENABLE,
         .pull_down_en = GPIO_PULLDOWN_DISABLE,
         .intr_type = GPIO_INTR_DISABLE,
     };
-    ESP_ERROR_CHECK(gpio_config(&enc_cfg));
+    ESP_ERROR_CHECK(gpio_config(&hollow_cfg));
 
-    uint8_t a = gpio_get_level((gpio_num_t)BOARD_PIN_ENC_A);
-    uint8_t b = gpio_get_level((gpio_num_t)BOARD_PIN_ENC_B);
-    s_last_enc_state = (a << 1) | b;
+    uint8_t ha = gpio_get_level((gpio_num_t)BOARD_PIN_HOLLOW_ENC_A);
+    uint8_t hb = gpio_get_level((gpio_num_t)BOARD_PIN_HOLLOW_ENC_B);
+    s_last_hollow_state = (ha << 1) | hb;
 
-    // 4. Configure Joystick SW Click Pin (GPIO 1, Pull-Up)
+    // 4. Configure Mouse Scroll Wheel GPIOs (GP12 & GP13, Internal Pull-Up)
+    gpio_config_t mouse_enc_cfg = {
+        .pin_bit_mask = (1ULL << BOARD_PIN_MOUSE_ENC_A) | (1ULL << BOARD_PIN_MOUSE_ENC_B),
+        .mode = GPIO_MODE_INPUT,
+        .pull_up_en = GPIO_PULLUP_ENABLE,
+        .pull_down_en = GPIO_PULLDOWN_DISABLE,
+        .intr_type = GPIO_INTR_DISABLE,
+    };
+    ESP_ERROR_CHECK(gpio_config(&mouse_enc_cfg));
+
+    uint8_t ma = gpio_get_level((gpio_num_t)BOARD_PIN_MOUSE_ENC_A);
+    uint8_t mb = gpio_get_level((gpio_num_t)BOARD_PIN_MOUSE_ENC_B);
+    s_last_mouse_state = (ma << 1) | mb;
+
+    // 5. Configure Shared SW Click Pin (GP1: Joystick SW + Mouse Wheel Click in parallel, Pull-Up)
     gpio_config_t sw_cfg = {
-        .pin_bit_mask = (1ULL << BOARD_PIN_JOY_SW),
+        .pin_bit_mask = (1ULL << BOARD_PIN_SHARED_SW),
         .mode = GPIO_MODE_INPUT,
         .pull_up_en = GPIO_PULLUP_ENABLE,
         .pull_down_en = GPIO_PULLDOWN_DISABLE,
@@ -165,7 +189,7 @@ static void read_joystick_normalized(int8_t *norm_x, int8_t *norm_y)
 
 static void hardware_controls_task(void *pvParameters)
 {
-    ESP_LOGI(TAG, "Hardware controls real-time loop active on Core 0");
+    ESP_LOGI(TAG, "Hardware controls real-time loop active on Core 0 (200 Hz)");
 
     bool last_sw_pressed = false;
     uint32_t press_start_ms = 0;
@@ -176,33 +200,69 @@ static void hardware_controls_task(void *pvParameters)
     uint32_t loop_counter = 0;
 
     while (1) {
-        // Run loop at 200 Hz (5ms) for rotary encoder and button responsiveness
+        // Run loop at 200 Hz (5ms) for responsive rotary encoders and button debouncing
         vTaskDelayUntil(&last_wake, pdMS_TO_TICKS(5));
         loop_counter++;
 
-        // 1. Poll Rotary Encoder (Quadrature Gray-Code Decoder)
-        uint8_t a = gpio_get_level((gpio_num_t)BOARD_PIN_ENC_A);
-        uint8_t b = gpio_get_level((gpio_num_t)BOARD_PIN_ENC_B);
-        uint8_t enc_state = (a << 1) | b;
-        if (enc_state != s_last_enc_state) {
-            int8_t step = s_enc_transitions[(s_last_enc_state << 2) | enc_state];
-            s_last_enc_state = enc_state;
-            s_enc_accum += step;
+        // ---------------------------------------------------------------------
+        // 1. Poll 56mm Hollow Shaft Encoder (Camera Focus Ring - GP7 / GP9)
+        //    Strictly 2-phase continuous rotary ring, NO click switch requirement.
+        // ---------------------------------------------------------------------
+        uint8_t ha = gpio_get_level((gpio_num_t)BOARD_PIN_HOLLOW_ENC_A);
+        uint8_t hb = gpio_get_level((gpio_num_t)BOARD_PIN_HOLLOW_ENC_B);
+        uint8_t h_enc_state = (ha << 1) | hb;
+        if (h_enc_state != s_last_hollow_state) {
+            int8_t step = s_enc_transitions[(s_last_hollow_state << 2) | h_enc_state];
+            s_last_hollow_state = h_enc_state;
+            s_hollow_accum += step;
 
-            // 4 transitions per physical detent click
-            if (s_enc_accum >= 4) {
-                usb_hid_send_mouse_scroll(1); // Scroll Up
-                haptics_play(HAPTIC_DETENT, 160, 12);
-                s_enc_accum = 0;
-            } else if (s_enc_accum <= -4) {
-                usb_hid_send_mouse_scroll(-1); // Scroll Down
-                haptics_play(HAPTIC_DETENT, 160, 12);
-                s_enc_accum = 0;
+            // 4 transitions per physical detent
+            if (s_hollow_accum >= 4) {
+                // Focus Increase (Closer / Macro)
+                if (tud_cdc_connected()) {
+                    tud_cdc_write_str("CMD:CAMERA_FOCUS 1\n");
+                    tud_cdc_write_flush();
+                }
+                haptics_play(HAPTIC_DETENT, 140, 10);
+                s_hollow_accum -= 4;
+            } else if (s_hollow_accum <= -4) {
+                // Focus Decrease (Infinity)
+                if (tud_cdc_connected()) {
+                    tud_cdc_write_str("CMD:CAMERA_FOCUS -1\n");
+                    tud_cdc_write_flush();
+                }
+                haptics_play(HAPTIC_DETENT, 140, 10);
+                s_hollow_accum += 4;
             }
         }
 
-        // 2. Poll Joystick Click SW (GPIO 1)
-        int sw_val = gpio_get_level((gpio_num_t)BOARD_PIN_JOY_SW);
+        // ---------------------------------------------------------------------
+        // 2. Poll Mouse Scroll Wheel (GP12 / GP13)
+        // ---------------------------------------------------------------------
+        uint8_t ma = gpio_get_level((gpio_num_t)BOARD_PIN_MOUSE_ENC_A);
+        uint8_t mb = gpio_get_level((gpio_num_t)BOARD_PIN_MOUSE_ENC_B);
+        uint8_t m_enc_state = (ma << 1) | mb;
+        if (m_enc_state != s_last_mouse_state) {
+            int8_t step = s_enc_transitions[(s_last_mouse_state << 2) | m_enc_state];
+            s_last_mouse_state = m_enc_state;
+            s_mouse_accum += step;
+
+            if (s_mouse_accum >= 4) {
+                usb_hid_send_mouse_scroll(1); // Scroll Up
+                haptics_play(HAPTIC_DETENT, 160, 12);
+                s_mouse_accum -= 4;
+            } else if (s_mouse_accum <= -4) {
+                usb_hid_send_mouse_scroll(-1); // Scroll Down
+                haptics_play(HAPTIC_DETENT, 160, 12);
+                s_mouse_accum += 4;
+            }
+        }
+
+        // ---------------------------------------------------------------------
+        // 3. Poll Shared Click SW (GP1: Joystick SW + Mouse Wheel Click in parallel)
+        //    Either switch pulling GP1 to GND acts as PTT / Click trigger.
+        // ---------------------------------------------------------------------
+        int sw_val = gpio_get_level((gpio_num_t)BOARD_PIN_SHARED_SW);
         bool sw_pressed = (sw_val == 0);
         uint32_t now_ms = (uint32_t)(esp_timer_get_time() / 1000);
 
@@ -217,7 +277,7 @@ static void hardware_controls_task(void *pvParameters)
                 ptt_active_via_sw = true;
                 usb_hid_send_ptt_keystroke(true);
                 ws2812_set_mode(LED_MODE_PTT);
-                ESP_LOGI(TAG, "Joystick SW Long Press -> PTT Start");
+                ESP_LOGI(TAG, "Shared GP1 Click SW Long Press -> PTT Start");
             }
         } else if (!sw_pressed && last_sw_pressed) {
             // Button released
@@ -227,17 +287,16 @@ static void hardware_controls_task(void *pvParameters)
                 ptt_active_via_sw = false;
                 usb_hid_send_ptt_keystroke(false);
                 ws2812_set_mode(s_current_mode == CONTROL_MODE_DRIVE ? LED_MODE_IDLE : LED_MODE_GIMBAL);
-                ESP_LOGI(TAG, "Joystick SW Released -> PTT Stop");
+                ESP_LOGI(TAG, "Shared GP1 Click SW Released -> PTT Stop");
             } else {
                 // Short click (< 450ms)
                 if (now_ms - last_click_ms < 350) {
                     // Double Click: Center Gimbal
-                    // Restore original mode since single click previously toggled it
                     s_current_mode = (s_current_mode == CONTROL_MODE_DRIVE) ? CONTROL_MODE_GIMBAL : CONTROL_MODE_DRIVE;
                     ws2812_set_mode(s_current_mode == CONTROL_MODE_DRIVE ? LED_MODE_IDLE : LED_MODE_GIMBAL);
                     s_pan_us = GIMBAL_CENTER_US;
                     s_tilt_us = GIMBAL_CENTER_US;
-                    ESP_LOGI(TAG, "Joystick SW Double-Click -> Gimbal Reset (1500, 1500), Mode restored to %s",
+                    ESP_LOGI(TAG, "Shared GP1 Click Double-Click -> Gimbal Reset (1500, 1500), Mode restored to %s",
                              s_current_mode == CONTROL_MODE_DRIVE ? "DRIVE" : "GIMBAL");
                     if (tud_cdc_connected()) {
                         char mode_buf[48];
@@ -257,7 +316,7 @@ static void hardware_controls_task(void *pvParameters)
                     last_click_ms = now_ms;
                     s_current_mode = (s_current_mode == CONTROL_MODE_DRIVE) ? CONTROL_MODE_GIMBAL : CONTROL_MODE_DRIVE;
                     ws2812_set_mode(s_current_mode == CONTROL_MODE_DRIVE ? LED_MODE_IDLE : LED_MODE_GIMBAL);
-                    ESP_LOGI(TAG, "Joystick SW Click -> Mode: %s",
+                    ESP_LOGI(TAG, "Shared GP1 Click -> Mode: %s",
                              s_current_mode == CONTROL_MODE_DRIVE ? "DRIVE" : "GIMBAL");
                     if (tud_cdc_connected()) {
                         char buf[48];
@@ -270,7 +329,9 @@ static void hardware_controls_task(void *pvParameters)
             }
         }
 
-        // 3. Periodic Joystick Sampling & Command Dispatch (every 30ms / ~33 Hz)
+        // ---------------------------------------------------------------------
+        // 4. Periodic Joystick Sampling & Command Dispatch (~33 Hz / every 30ms)
+        // ---------------------------------------------------------------------
         if ((loop_counter % 6) == 0) {
             int8_t norm_x = 0, norm_y = 0;
             read_joystick_normalized(&norm_x, &norm_y);
@@ -283,9 +344,6 @@ static void hardware_controls_task(void *pvParameters)
             }
 
             if (s_current_mode == CONTROL_MODE_DRIVE) {
-                // In Drive Mode:
-                // norm_y = Forward/Reverse (vx)
-                // norm_x = Lateral Strafe (vy)
                 int8_t vx = norm_y;
                 int8_t vy = norm_x;
                 int8_t omega = 0;
@@ -294,7 +352,7 @@ static void hardware_controls_task(void *pvParameters)
                 bool was_moving = (s_last_vx != 0 || s_last_vy != 0);
 
                 if (was_moving && !is_moving) {
-                    s_stop_burst_count = 4; // Send 4 burst packets to guarantee stop arrival
+                    s_stop_burst_count = 4;
                 }
 
                 if (is_moving || s_stop_burst_count > 0) {
@@ -315,9 +373,6 @@ static void hardware_controls_task(void *pvParameters)
                 s_last_vx = vx;
                 s_last_vy = vy;
             } else if (s_current_mode == CONTROL_MODE_GIMBAL) {
-                // In Gimbal Pan/Tilt Mode:
-                // norm_x controls Pan angle slew (-100..100)
-                // norm_y controls Tilt angle slew (-100..100)
                 if (norm_x != 0 || norm_y != 0) {
                     int delta_pan = (norm_x * 10) / 100;
                     int delta_tilt = (norm_y * 10) / 100;
