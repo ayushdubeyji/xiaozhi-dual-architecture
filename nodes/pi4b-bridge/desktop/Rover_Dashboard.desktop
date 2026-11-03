@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Rover Dashboard
+Comment=4.3" Mecanum Rover Touch Controller & 3D Twin
+Exec=/home/ayush/rover_dashboard_43/start_dashboard.sh
+Icon=input-gaming
+Terminal=false
+Categories=Utility;Robotics;
+StartupNotify=false

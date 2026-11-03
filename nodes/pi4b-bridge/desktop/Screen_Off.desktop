@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Screen Off
+Comment=Tap to turn screen off, double-tap screen to wake
+Exec=/home/ayush/.local/bin/screen_off.py
+Icon=weather-clear-night
+Terminal=false
+Categories=Utility;
+StartupNotify=false

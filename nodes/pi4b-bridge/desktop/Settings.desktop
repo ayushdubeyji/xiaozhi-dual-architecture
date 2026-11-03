@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Settings
+Comment=Display Brightness, Orientation & Tablet Settings
+Exec=env DISPLAY=:0 WAYLAND_DISPLAY=wayland-0 /home/ayush/settings/settings_gui.py
+Icon=preferences-desktop-display
+Terminal=false
+Categories=Settings;HardwareSettings;
+StartupNotify=false

@@ -1,0 +1,12 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=IMX519 60FPS Cam
+Comment=Arducam IMX519 Modern 60FPS Camera GUI & Settings
+Exec=/home/ayush/imx519_cam_gui/run_cam.sh
+Path=/home/ayush/imx519_cam_gui
+Icon=camera-photo
+Terminal=false
+Categories=AudioVideo;Video;Photography;
+StartupNotify=false
+X-KeepTerminal=false
