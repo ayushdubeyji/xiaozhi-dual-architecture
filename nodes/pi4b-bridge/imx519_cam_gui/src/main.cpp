@@ -17,6 +17,7 @@
 #include <netinet/in.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <filesystem>
 
 constexpr int SCREEN_WIDTH = 800;
 constexpr int SCREEN_HEIGHT = 480;
@@ -211,25 +212,23 @@ void drawIconFocus(SDL_Renderer* ren, int cx, int cy, int size, uint8_t r, uint8
 void drawIconBolt(SDL_Renderer* ren, int cx, int cy, int size, uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
     SDL_SetRenderDrawBlendMode(ren, SDL_BLENDMODE_BLEND);
     SDL_SetRenderDrawColor(ren, r, g, b, a);
-    int half_h = size / 2;
-    SDL_Point pts[8] = {
-        { cx + 1, cy - half_h },
-        { cx - 4, cy - 1 },
-        { cx,     cy - 1 },
-        { cx - 2, cy + half_h },
-        { cx + 4, cy + 1 },
-        { cx,     cy + 1 },
-        { cx + 1, cy - half_h }
-    };
-    SDL_RenderDrawLines(ren, pts, 7);
-    pts[0] = { cx + 2, cy - half_h + 1 };
-    pts[1] = { cx - 3, cy };
-    pts[2] = { cx + 1, cy };
-    pts[3] = { cx - 1, cy + half_h - 1 };
-    pts[4] = { cx + 3, cy + 1 };
-    pts[5] = { cx + 1, cy + 1 };
-    pts[6] = { cx + 2, cy - half_h + 1 };
-    SDL_RenderDrawLines(ren, pts, 7);
+    int h = size;
+    int top_y = cy - h / 2;
+    int mid_y = cy;
+    int bot_y = cy + h / 2;
+
+    for (int y = top_y; y <= mid_y; ++y) {
+        float frac = (mid_y > top_y) ? static_cast<float>(y - top_y) / (mid_y - top_y) : 0.0f;
+        int x1 = static_cast<int>((cx + 2) + frac * ((cx - 5) - (cx + 2)));
+        int x2 = static_cast<int>((cx + 2) + frac * ((cx + 1) - (cx + 2)));
+        SDL_RenderDrawLine(ren, std::min(x1, x2), y, std::max(x1, x2), y);
+    }
+    for (int y = mid_y; y <= bot_y; ++y) {
+        float frac = (bot_y > mid_y) ? static_cast<float>(y - mid_y) / (bot_y - mid_y) : 0.0f;
+        int x1 = static_cast<int>((cx - 1) + frac * ((cx - 3) - (cx - 1)));
+        int x2 = static_cast<int>((cx + 4) + frac * ((cx - 3) - (cx + 4)));
+        SDL_RenderDrawLine(ren, std::min(x1, x2), y, std::max(x1, x2), y);
+    }
 }
 
 void drawIconResolution(SDL_Renderer* ren, int cx, int cy, int size, uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
@@ -347,6 +346,34 @@ struct FastText {
     std::string last_str;
     SDL_Color last_col{0, 0, 0, 0};
 
+    FastText() = default;
+    ~FastText() { destroy(); }
+
+    FastText(const FastText&) = delete;
+    FastText& operator=(const FastText&) = delete;
+
+    FastText(FastText&& other) noexcept
+        : tex(other.tex), w(other.w), h(other.h), last_str(std::move(other.last_str)), last_col(other.last_col) {
+        other.tex = nullptr;
+        other.w = 0;
+        other.h = 0;
+    }
+
+    FastText& operator=(FastText&& other) noexcept {
+        if (this != &other) {
+            destroy();
+            tex = other.tex;
+            w = other.w;
+            h = other.h;
+            last_str = std::move(other.last_str);
+            last_col = other.last_col;
+            other.tex = nullptr;
+            other.w = 0;
+            other.h = 0;
+        }
+        return *this;
+    }
+
     void update(SDL_Renderer* ren, TTF_Font* font, const std::string& str, SDL_Color col) {
         if (!font) return;
         if (str == last_str && tex && col.r == last_col.r && col.g == last_col.g && col.b == last_col.b && col.a == last_col.a) return;
@@ -381,6 +408,7 @@ struct FastText {
         }
         w = 0;
         h = 0;
+        last_str.clear();
     }
 };
 
@@ -426,9 +454,9 @@ int main(int argc, char* argv[]) {
     SystemPerf::pinToCore(3);
     SentryTelemetry::init();
 
-    // Ensure Wayland & Touch support in SDL2
-    SDL_SetHint(SDL_HINT_TOUCH_MOUSE_EVENTS, "1");
-    SDL_SetHint(SDL_HINT_MOUSE_TOUCH_EVENTS, "1");
+    // Ensure Wayland & Clean Touch support in SDL2 without synthetic duplication
+    SDL_SetHint(SDL_HINT_TOUCH_MOUSE_EVENTS, "0");
+    SDL_SetHint(SDL_HINT_MOUSE_TOUCH_EVENTS, "0");
     SDL_SetHint(SDL_HINT_VIDEO_WAYLAND_ALLOW_LIBDECOR, "0");
 
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_EVENTS) != 0) {
@@ -510,23 +538,27 @@ int main(int argc, char* argv[]) {
     int cur_awb_idx = 0;
 
     // Navigation & Interaction State
-    LeftViewMode active_view = LeftViewMode::FOCUS_JOG;
+    LeftViewMode active_view = LeftViewMode::CAROUSEL;
     DragTarget active_drag = DragTarget::DRAG_NONE;
     int drag_last_x = 0, drag_last_y = 0;
+    float drag_start_angle = 0.0f, drag_last_angle = 0.0f;
+    bool is_dragging_carousel = false;
+    SDL_FingerID active_finger_id = -1;
 
     float carousel_angle = 0.0f;
     float carousel_target_angle = 0.0f;
     int current_carousel_idx = 0;
 
-    std::string toast_msg = "IMX519 Hardware Online :: Thumb jog active";
+    std::string toast_msg = "IMX519 AI-Optics Online :: Radial Arc Active";
     auto toast_time = std::chrono::steady_clock::now();
 
-    // FastText cache handles
+    // FastText cache handles (persistent to prevent GPU texture leakage)
     FastText txt_logo, txt_telemetry, txt_lens_info, txt_toast, txt_exit;
     FastText txt_shutter_label, txt_af_label, txt_modes_btn, txt_af_btn;
     FastText txt_carousel_items[5];
     FastText txt_focus_val, txt_vcm_val, txt_dpt_inf, txt_dpt_mid, txt_dpt_near;
-    FastText txt_set_title, txt_ae_btn, txt_exp_label, txt_gain_label, txt_awb_btn[4];
+    FastText txt_set_title, txt_ae_btn, txt_exp_label, txt_gain_label, txt_awb_title, txt_awb_btn[4];
+    FastText txt_m, txt_p, txt_set_btn_lbl, txt_modes_tab, txt_focus_tab;
 
     uint64_t frame_count = 0;
     double smoothed_fps = 60.0;
@@ -555,6 +587,8 @@ int main(int argc, char* argv[]) {
             std::time_t now_c = std::time(nullptr);
             char tbuf[64];
             std::strftime(tbuf, sizeof(tbuf), "%Y%m%d_%H%M%S", std::localtime(&now_c));
+            std::error_code ec;
+            std::filesystem::create_directories("/home/ayush/Pictures", ec);
             std::string fname = std::string("/home/ayush/Pictures/IMX519_") + tbuf + ".bmp";
 
             SDL_Surface* surf = SDL_CreateRGBSurfaceWithFormatFrom(
@@ -576,20 +610,20 @@ int main(int argc, char* argv[]) {
 
     // Lambda: Unified Pointer Down (Touch / Mouse)
     auto handlePointerDown = [&](int x, int y) {
-        // 1. Dedicated Exit Button (Top-Right: 715, 10, 75, 36)
-        if (pointInRect(x, y, 715, 10, 75, 36)) {
+        // 1. Dedicated Exit Button (Top-Right: 715, 8, 75, 36)
+        if (pointInRect(x, y, 715, 8, 75, 36)) {
             running = false;
             return;
         }
 
-        // 2. Right Action Pod: Shutter Button (Center: 745, 240, R=34)
-        if (distSq(x, y, 745, 240) <= (34 * 34)) {
+        // 2. Right Action Pod: Shutter Button (Center: 745, 240, R=36)
+        if (distSq(x, y, 745, 240) <= (36 * 36)) {
             triggerSnapshot();
             return;
         }
 
-        // 3. Right Action Pod: Quick AF Button (Center: 745, 140, R=26)
-        if (distSq(x, y, 745, 140) <= (26 * 26)) {
+        // 3. Right Action Pod: Quick AF Button (Center: 745, 140, R=28)
+        if (distSq(x, y, 745, 140) <= (28 * 28)) {
             auto_focus_active = true;
             camera.triggerAutofocus();
             toast_msg = "⚡ Autofocus Sweeping VCM Gradient...";
@@ -597,143 +631,164 @@ int main(int argc, char* argv[]) {
             return;
         }
 
-        // 4. Right Action Pod: Settings Drawer Button (Center: 745, 340, R=26)
-        if (distSq(x, y, 745, 340) <= (26 * 26)) {
+        // 4. Right Action Pod: Settings Drawer Button (Center: 745, 340, R=28)
+        if (distSq(x, y, 745, 340) <= (28 * 28)) {
             show_settings = !show_settings;
             return;
         }
 
-        // 5. Settings Drawer (if open: x in [450, 710], y in [55, 420])
-        if (show_settings && pointInRect(x, y, 450, 55, 260, 365)) {
-            // Close button at (675, 65, 26, 26)
-            if (pointInRect(x, y, 675, 65, 26, 26)) {
-                show_settings = false;
-                return;
-            }
-            // Auto-Exposure Toggle (465, 95, 230, 32)
-            if (pointInRect(x, y, 465, 95, 230, 32)) {
-                auto_exposure_enabled = !auto_exposure_enabled;
-                camera.setExposure(auto_exposure_enabled, exp_val_us);
-                toast_msg = auto_exposure_enabled ? "Auto Exposure: Enabled" : "Auto Exposure: Manual Mode";
-                toast_time = std::chrono::steady_clock::now();
-                return;
-            }
-            // Shutter Speed Slider Track (465, 155, 230, 28)
-            if (pointInRect(x, y, 465, 155, 230, 28)) {
-                active_drag = DragTarget::DRAG_EXP_SLIDER;
-                float rel = std::clamp(static_cast<float>(x - 465) / 230.0f, 0.0f, 1.0f);
-                exp_val_us = static_cast<uint32_t>(1000 + rel * 32000);
-                auto_exposure_enabled = false;
-                camera.setExposure(false, exp_val_us);
-                return;
-            }
-            // Analog Gain Slider Track (465, 225, 230, 28)
-            if (pointInRect(x, y, 465, 225, 230, 28)) {
-                active_drag = DragTarget::DRAG_GAIN_SLIDER;
-                float rel = std::clamp(static_cast<float>(x - 465) / 230.0f, 0.0f, 1.0f);
-                gain_val = 1.0f + rel * 15.0f;
-                camera.setGain(gain_val);
-                return;
-            }
-            // AWB Mode Buttons (4 buttons at y: 295, w: 54 each)
-            for (int b = 0; b < 4; ++b) {
-                int bx = 465 + b * 59;
-                if (pointInRect(x, y, bx, 295, 54, 30)) {
-                    cur_awb_idx = b;
-                    camera.setAwbMode(cur_awb_idx);
-                    toast_msg = "AWB Mode: " + AWB_NAMES[cur_awb_idx];
+        // 5. Settings Drawer (if open: x in [440, 715], y in [50, 430])
+        if (show_settings) {
+            if (pointInRect(x, y, 440, 50, 275, 380)) {
+                // Close button at (665, 55, 45, 40)
+                if (pointInRect(x, y, 665, 55, 45, 40)) {
+                    show_settings = false;
+                    return;
+                }
+                // Auto-Exposure Toggle (455, 88, 245, 36)
+                if (pointInRect(x, y, 455, 88, 245, 36)) {
+                    auto_exposure_enabled = !auto_exposure_enabled;
+                    camera.setExposure(auto_exposure_enabled, exp_val_us);
+                    toast_msg = auto_exposure_enabled ? "Auto Exposure: Enabled" : "Auto Exposure: Manual Mode";
                     toast_time = std::chrono::steady_clock::now();
                     return;
                 }
+                // Shutter Speed Slider Touch Track (Generous hit zone: y in [135, 190])
+                if (pointInRect(x, y, 445, 135, 265, 55)) {
+                    active_drag = DragTarget::DRAG_EXP_SLIDER;
+                    float rel = std::clamp(static_cast<float>(x - 470) / 220.0f, 0.0f, 1.0f);
+                    exp_val_us = static_cast<uint32_t>(1000 + rel * 32000);
+                    auto_exposure_enabled = false;
+                    camera.setExposure(false, exp_val_us);
+                    return;
+                }
+                // Analog Gain Slider Touch Track (Generous hit zone: y in [205, 260])
+                if (pointInRect(x, y, 445, 205, 265, 55)) {
+                    active_drag = DragTarget::DRAG_GAIN_SLIDER;
+                    float rel = std::clamp(static_cast<float>(x - 470) / 220.0f, 0.0f, 1.0f);
+                    gain_val = 1.0f + rel * 15.0f;
+                    camera.setGain(gain_val);
+                    return;
+                }
+                // AWB Mode Buttons (4 buttons at y: 285..335)
+                for (int b = 0; b < 4; ++b) {
+                    int bx = 465 + b * 59;
+                    if (pointInRect(x, y, bx - 3, 285, 60, 45)) {
+                        cur_awb_idx = b;
+                        camera.setAwbMode(cur_awb_idx);
+                        toast_msg = "AWB Mode: " + AWB_NAMES[cur_awb_idx];
+                        toast_time = std::chrono::steady_clock::now();
+                        return;
+                    }
+                }
+                return;
+            } else if (!pointInRect(x, y, 715, 310, 60, 60)) {
+                // Tapping outside drawer dismisses it
+                show_settings = false;
             }
-            return;
         }
 
-        // 6. Left Zone: View Switcher / Modes Toggle Pill (16, 52, 100, 32)
-        if (pointInRect(x, y, 16, 52, 100, 32)) {
-            active_view = (active_view == LeftViewMode::FOCUS_JOG) ? LeftViewMode::CAROUSEL : LeftViewMode::FOCUS_JOG;
-            toast_msg = (active_view == LeftViewMode::FOCUS_JOG) ? "Mode: Focus Jog Dial" : "Mode: Carousel Navigation";
+        // 6. Left Pod Segmented View Toggle Tabs
+        // Tab 1: [🎠 MODES] (16, 50, 98, 34)
+        if (pointInRect(x, y, 16, 50, 98, 34)) {
+            active_view = LeftViewMode::CAROUSEL;
+            toast_msg = "Mode: Radial Carousel";
+            toast_time = std::chrono::steady_clock::now();
+            return;
+        }
+        // Tab 2: [🔍 FOCUS] (118, 50, 98, 34)
+        if (pointInRect(x, y, 118, 50, 98, 34)) {
+            active_view = LeftViewMode::FOCUS_JOG;
+            toast_msg = "Mode: Focus Jog Dial";
             toast_time = std::chrono::steady_clock::now();
             return;
         }
 
-        // 7. Left Zone: Quick AF Trigger Button in Focus View (16, 92, 100, 32)
-        if (active_view == LeftViewMode::FOCUS_JOG && pointInRect(x, y, 16, 92, 100, 32)) {
-            auto_focus_active = true;
-            camera.triggerAutofocus();
-            toast_msg = "⚡ Autofocus Sweeping VCM Gradient...";
-            toast_time = std::chrono::steady_clock::now();
-            return;
-        }
-
-        // 8. Left Zone: Focus Fine-Nudge Buttons (16, 400, 46, 32) and (70, 400, 46, 32)
+        // 7. Left Zone: Focus Jog View Controls
         if (active_view == LeftViewMode::FOCUS_JOG) {
-            if (pointInRect(x, y, 16, 400, 46, 32)) {
-                slider_focus_dpt = std::clamp(slider_focus_dpt - 0.2f, 0.0f, 10.0f);
+            // Fine Nudge [-] (16, 396, 60, 36)
+            if (pointInRect(x, y, 16, 396, 60, 36)) {
+                slider_focus_dpt = std::clamp(slider_focus_dpt - 0.1f, 0.0f, 10.0f);
                 auto_focus_active = false;
                 camera.setManualFocus(slider_focus_dpt);
                 return;
             }
-            if (pointInRect(x, y, 70, 400, 46, 32)) {
-                slider_focus_dpt = std::clamp(slider_focus_dpt + 0.2f, 0.0f, 10.0f);
+            // Quick AF [⚡ AF] (80, 396, 70, 36)
+            if (pointInRect(x, y, 80, 396, 70, 36)) {
+                auto_focus_active = true;
+                camera.triggerAutofocus();
+                toast_msg = "⚡ Autofocus Sweeping VCM Gradient...";
+                toast_time = std::chrono::steady_clock::now();
+                return;
+            }
+            // Fine Nudge [+] (154, 396, 60, 36)
+            if (pointInRect(x, y, 154, 396, 60, 36)) {
+                slider_focus_dpt = std::clamp(slider_focus_dpt + 0.1f, 0.0f, 10.0f);
                 auto_focus_active = false;
                 camera.setManualFocus(slider_focus_dpt);
                 return;
             }
-        }
-
-        // 9. Left Arc Zone Touch / Drag Hit-Test (x in [0, 240])
-        if (x <= 240) {
-            drag_last_x = x;
-            drag_last_y = y;
-
-            if (active_view == LeftViewMode::FOCUS_JOG) {
+            // Focus Radial Arc Drag Hit-Test (x in [0, 240], y in [88, 395])
+            if (x <= 240 && y >= 88 && y <= 395) {
                 active_drag = DragTarget::DRAG_FOCUS_JOG;
-                // Calculate angular position along the radial arc
                 float angle = std::atan2(static_cast<float>(y - ARC_CENTER_Y), static_cast<float>(x - ARC_CENTER_X));
                 float norm = std::clamp((angle - ARC_MIN_ANG) / (ARC_MAX_ANG - ARC_MIN_ANG), 0.0f, 1.0f);
                 slider_focus_dpt = norm * 10.0f;
                 auto_focus_active = false;
                 camera.setManualFocus(slider_focus_dpt);
-            } else {
-                // Carousel Mode: Check if tapped on a specific item pill
-                constexpr float ITEM_SPACING = 0.42f; // ~24 deg
-                for (int i = 0; i < 5; ++i) {
-                    float theta = carousel_angle + (i - current_carousel_idx) * ITEM_SPACING;
-                    if (std::abs(theta) < 1.0f) {
-                        float ix = ARC_CENTER_X + ARC_RADIUS * std::cos(theta);
-                        float iy = ARC_CENTER_Y + ARC_RADIUS * std::sin(theta);
-                        if (distSq(x, y, ix, iy) <= (36 * 36)) {
-                            // Tapped item i
-                            if (i == 0) { // FOCUS
-                                active_view = LeftViewMode::FOCUS_JOG;
-                                toast_msg = "Focus Jog Dial Opened";
-                            } else if (i == 1) { // AF SWEEP
-                                auto_focus_active = true;
-                                camera.triggerAutofocus();
-                                toast_msg = "⚡ Autofocus Sweeping...";
-                            } else if (i == 2) { // RESOLUTION
-                                cur_res_idx = (cur_res_idx + 1) % RES_MODES.size();
-                                camera.switchResolution(RES_MODES[cur_res_idx].w, RES_MODES[cur_res_idx].h, RES_MODES[cur_res_idx].fps);
-                                if (video_texture) SDL_DestroyTexture(video_texture);
-                                video_texture = SDL_CreateTexture(
-                                    renderer, SDL_PIXELFORMAT_BGR24, SDL_TEXTUREACCESS_STREAMING,
-                                    RES_MODES[cur_res_idx].w, RES_MODES[cur_res_idx].h
-                                );
-                                toast_msg = "Mode: " + RES_MODES[cur_res_idx].label;
-                            } else if (i == 3) { // EXPOSURE
-                                show_settings = !show_settings;
-                            } else if (i == 4) { // WHITE BALANCE
-                                cur_awb_idx = (cur_awb_idx + 1) % 4;
-                                camera.setAwbMode(cur_awb_idx);
-                                toast_msg = "AWB: " + AWB_NAMES[cur_awb_idx];
-                            }
-                            toast_time = std::chrono::steady_clock::now();
-                            return;
+                return;
+            }
+        } else {
+            // 8. Left Zone: Carousel Mode Controls
+            constexpr float ITEM_SPACING = 0.42f;
+            // Check if tapped directly on an orbiting card (precise bounding box test)
+            for (int i = 0; i < 5; ++i) {
+                float theta = carousel_angle + i * ITEM_SPACING;
+                if (std::abs(theta) < 1.05f) {
+                    float ix = ARC_CENTER_X + ARC_RADIUS * std::cos(theta);
+                    float iy = ARC_CENTER_Y + ARC_RADIUS * std::sin(theta);
+                    bool is_sel = (std::abs(theta) < 0.20f);
+                    int card_w = is_sel ? 122 : 102;
+                    int card_h = is_sel ? 36 : 30;
+                    if (pointInRect(x, y, static_cast<int>(ix) - 20, static_cast<int>(iy) - card_h / 2 - 5, card_w + 15, card_h + 10)) {
+                        carousel_target_angle = -i * ITEM_SPACING;
+                        current_carousel_idx = i;
+                        if (i == 0) { // FOCUS
+                            active_view = LeftViewMode::FOCUS_JOG;
+                            toast_msg = "🔍 Focus Jog Dial Activated";
+                        } else if (i == 1) { // AF SWEEP
+                            auto_focus_active = true;
+                            camera.triggerAutofocus();
+                            toast_msg = "⚡ Autofocus Sweeping...";
+                        } else if (i == 2) { // RESOLUTION
+                            cur_res_idx = (cur_res_idx + 1) % RES_MODES.size();
+                            camera.switchResolution(RES_MODES[cur_res_idx].w, RES_MODES[cur_res_idx].h, RES_MODES[cur_res_idx].fps);
+                            if (video_texture) SDL_DestroyTexture(video_texture);
+                            video_texture = SDL_CreateTexture(
+                                renderer, SDL_PIXELFORMAT_BGR24, SDL_TEXTUREACCESS_STREAMING,
+                                RES_MODES[cur_res_idx].w, RES_MODES[cur_res_idx].h
+                            );
+                            toast_msg = "Mode: " + RES_MODES[cur_res_idx].label;
+                        } else if (i == 3) { // EXPOSURE
+                            show_settings = !show_settings;
+                            toast_msg = show_settings ? "Parameters Opened" : "Parameters Closed";
+                        } else if (i == 4) { // WHITE BALANCE
+                            cur_awb_idx = (cur_awb_idx + 1) % 4;
+                            camera.setAwbMode(cur_awb_idx);
+                            toast_msg = "AWB: " + AWB_NAMES[cur_awb_idx];
                         }
+                        toast_time = std::chrono::steady_clock::now();
+                        return;
                     }
                 }
+            }
+            // If not card tap, begin carousel angular drag along arc
+            if (x <= 280) {
                 active_drag = DragTarget::DRAG_CAROUSEL_WHEEL;
+                drag_start_angle = std::atan2(static_cast<float>(y - ARC_CENTER_Y), static_cast<float>(x - ARC_CENTER_X));
+                drag_last_angle = drag_start_angle;
+                is_dragging_carousel = false;
+                return;
             }
         }
     };
@@ -746,21 +801,23 @@ int main(int argc, char* argv[]) {
             slider_focus_dpt = norm * 10.0f;
             auto_focus_active = false;
             camera.setManualFocus(slider_focus_dpt);
-            drag_last_x = x;
-            drag_last_y = y;
         } else if (active_drag == DragTarget::DRAG_CAROUSEL_WHEEL) {
-            float dy = static_cast<float>(y - drag_last_y);
-            float d_theta = (dy / ARC_RADIUS);
+            float cur_ang = std::atan2(static_cast<float>(y - ARC_CENTER_Y), static_cast<float>(x - ARC_CENTER_X));
+            float d_theta = cur_ang - drag_last_angle;
+            if (std::abs(cur_ang - drag_start_angle) > 0.04f) {
+                is_dragging_carousel = true;
+            }
             carousel_angle += d_theta;
-            drag_last_x = x;
-            drag_last_y = y;
+            constexpr float ITEM_SPACING = 0.42f;
+            carousel_angle = std::clamp(carousel_angle, -4.0f * ITEM_SPACING - 0.25f, 0.25f);
+            drag_last_angle = cur_ang;
         } else if (active_drag == DragTarget::DRAG_EXP_SLIDER) {
-            float rel = std::clamp(static_cast<float>(x - 465) / 230.0f, 0.0f, 1.0f);
+            float rel = std::clamp(static_cast<float>(x - 470) / 220.0f, 0.0f, 1.0f);
             exp_val_us = static_cast<uint32_t>(1000 + rel * 32000);
             auto_exposure_enabled = false;
             camera.setExposure(false, exp_val_us);
         } else if (active_drag == DragTarget::DRAG_GAIN_SLIDER) {
-            float rel = std::clamp(static_cast<float>(x - 465) / 230.0f, 0.0f, 1.0f);
+            float rel = std::clamp(static_cast<float>(x - 470) / 220.0f, 0.0f, 1.0f);
             gain_val = 1.0f + rel * 15.0f;
             camera.setGain(gain_val);
         }
@@ -795,6 +852,7 @@ int main(int argc, char* argv[]) {
                     slider_focus_dpt = std::clamp(val, 0.0f, 10.0f);
                     auto_focus_active = false;
                     camera.setManualFocus(slider_focus_dpt);
+                    active_view = LeftViewMode::FOCUS_JOG;
                     std::stringstream ss;
                     ss << "Focus: " << std::fixed << std::setprecision(1) << slider_focus_dpt << " dpt ("
                        << camera.getRawVcmPosition() << ")";
@@ -817,38 +875,59 @@ int main(int argc, char* argv[]) {
                 }
             } else if (ev.type == SDL_MOUSEWHEEL) {
                 float step_dir = (ev.wheel.direction == SDL_MOUSEWHEEL_FLIPPED) ? -1.0f : 1.0f;
-                float delta = (float)ev.wheel.y * step_dir * 0.20f;
-                slider_focus_dpt = std::clamp(slider_focus_dpt + delta, 0.0f, 10.0f);
-                auto_focus_active = false;
-                camera.setManualFocus(slider_focus_dpt);
-                std::stringstream ss;
-                ss << "Focus: " << std::fixed << std::setprecision(1) << slider_focus_dpt << " dpt";
-                toast_msg = ss.str();
-                toast_time = std::chrono::steady_clock::now();
+                float delta = (float)ev.wheel.y * step_dir;
+                if (active_view == LeftViewMode::CAROUSEL) {
+                    constexpr float ITEM_SPACING = 0.42f;
+                    carousel_target_angle = std::clamp(carousel_target_angle - delta * ITEM_SPACING, -4.0f * ITEM_SPACING, 0.0f);
+                    current_carousel_idx = static_cast<int>(std::round(-carousel_target_angle / ITEM_SPACING));
+                } else {
+                    slider_focus_dpt = std::clamp(slider_focus_dpt + delta * 0.20f, 0.0f, 10.0f);
+                    auto_focus_active = false;
+                    camera.setManualFocus(slider_focus_dpt);
+                    std::stringstream ss;
+                    ss << "Focus: " << std::fixed << std::setprecision(1) << slider_focus_dpt << " dpt";
+                    toast_msg = ss.str();
+                    toast_time = std::chrono::steady_clock::now();
+                }
+            } else if (ev.type == SDL_WINDOWEVENT) {
+                if (ev.window.event == SDL_WINDOWEVENT_LEAVE || ev.window.event == SDL_WINDOWEVENT_FOCUS_LOST) {
+                    active_drag = DragTarget::DRAG_NONE;
+                    active_finger_id = -1;
+                }
             } else if (ev.type == SDL_MOUSEBUTTONDOWN) {
-                if (ev.button.button == SDL_BUTTON_LEFT) {
+                if (ev.button.which != SDL_TOUCH_MOUSEID && ev.button.button == SDL_BUTTON_LEFT) {
                     handlePointerDown(ev.button.x, ev.button.y);
                 }
             } else if (ev.type == SDL_MOUSEMOTION) {
-                if (ev.motion.state & SDL_BUTTON_LMASK) {
-                    handlePointerMotion(ev.motion.x, ev.motion.y);
+                if (ev.motion.which != SDL_TOUCH_MOUSEID) {
+                    if (active_drag != DragTarget::DRAG_NONE || (ev.motion.state & SDL_BUTTON_LMASK)) {
+                        handlePointerMotion(ev.motion.x, ev.motion.y);
+                    }
                 }
             } else if (ev.type == SDL_MOUSEBUTTONUP) {
-                if (ev.button.button == SDL_BUTTON_LEFT) {
+                if (ev.button.which != SDL_TOUCH_MOUSEID && ev.button.button == SDL_BUTTON_LEFT) {
                     handlePointerUp(ev.button.x, ev.button.y);
                 }
             } else if (ev.type == SDL_FINGERDOWN) {
-                int px = static_cast<int>(ev.tfinger.x * SCREEN_WIDTH);
-                int py = static_cast<int>(ev.tfinger.y * SCREEN_HEIGHT);
-                handlePointerDown(px, py);
+                if (active_finger_id == -1) {
+                    active_finger_id = ev.tfinger.fingerId;
+                    int px = static_cast<int>(ev.tfinger.x * SCREEN_WIDTH);
+                    int py = static_cast<int>(ev.tfinger.y * SCREEN_HEIGHT);
+                    handlePointerDown(px, py);
+                }
             } else if (ev.type == SDL_FINGERMOTION) {
-                int px = static_cast<int>(ev.tfinger.x * SCREEN_WIDTH);
-                int py = static_cast<int>(ev.tfinger.y * SCREEN_HEIGHT);
-                handlePointerMotion(px, py);
+                if (ev.tfinger.fingerId == active_finger_id) {
+                    int px = static_cast<int>(ev.tfinger.x * SCREEN_WIDTH);
+                    int py = static_cast<int>(ev.tfinger.y * SCREEN_HEIGHT);
+                    handlePointerMotion(px, py);
+                }
             } else if (ev.type == SDL_FINGERUP) {
-                int px = static_cast<int>(ev.tfinger.x * SCREEN_WIDTH);
-                int py = static_cast<int>(ev.tfinger.y * SCREEN_HEIGHT);
-                handlePointerUp(px, py);
+                if (ev.tfinger.fingerId == active_finger_id) {
+                    active_finger_id = -1;
+                    int px = static_cast<int>(ev.tfinger.x * SCREEN_WIDTH);
+                    int py = static_cast<int>(ev.tfinger.y * SCREEN_HEIGHT);
+                    handlePointerUp(px, py);
+                }
             }
         }
 
@@ -900,8 +979,8 @@ int main(int argc, char* argv[]) {
 
         // 5. Left-Edge Radial Curved Arc Jog-Wheel System
         // Frosted pod backdrop along left
-        drawFillRoundedRect(renderer, -40, 30, 220, 420, 30, 8, 14, 24, 205);
-        drawRoundedRect(renderer, -40, 30, 220, 420, 30, 0, 245, 255, 60);
+        drawFillRoundedRect(renderer, -40, 38, 305, 404, 24, 8, 14, 24, 210);
+        drawRoundedRect(renderer, -40, 38, 305, 404, 24, 0, 245, 255, 60);
 
         // Sweeping guide arcs
         drawArc(renderer, static_cast<int>(ARC_CENTER_X), static_cast<int>(ARC_CENTER_Y), static_cast<int>(ARC_RADIUS), ARC_MIN_ANG, ARC_MAX_ANG, 0, 245, 255, 70, 2);
@@ -968,45 +1047,48 @@ int main(int argc, char* argv[]) {
             drawRoundedRect(renderer, r_box_x - 4, r_box_y - 3, txt_focus_val.w + 10, 22, 4, 0, 245, 255, 140);
             txt_focus_val.draw(renderer, r_box_x + 1, r_box_y + 1);
 
-            // Quick View Mode Button [☰ MODES]
-            drawFillRoundedRect(renderer, 16, 52, 100, 30, 6, 20, 30, 48, 220);
-            drawRoundedRect(renderer, 16, 52, 100, 30, 6, 0, 245, 255, 140);
-            drawIconSliders(renderer, 28, 67, 12, 0, 245, 255, 255);
-            txt_modes_btn.update(renderer, font_tiny, "MODES", {255, 255, 255, 255});
-            txt_modes_btn.draw(renderer, 44, 60);
+            // Segmented Mode Tabs: [MODES] and [FOCUS]
+            drawFillRoundedRect(renderer, 16, 50, 98, 32, 5, 20, 30, 48, 220);
+            drawRoundedRect(renderer, 16, 50, 98, 32, 5, 0, 245, 255, 100);
+            drawIconSliders(renderer, 28, 66, 12, 148, 163, 184, 255);
+            txt_modes_tab.update(renderer, font_tiny, "MODES", {148, 163, 184, 255});
+            txt_modes_tab.draw(renderer, 44, 59);
 
-            // Quick AF Trigger Button [⚡ AF SWEEP]
-            drawFillRoundedRect(renderer, 16, 90, 100, 30, 6, 16, 185, 129, auto_focus_active ? 220 : 120);
-            drawRoundedRect(renderer, 16, 90, 100, 30, 6, 16, 185, 129, 255);
-            drawIconBolt(renderer, 28, 105, 12, 255, 255, 255, 255);
-            txt_af_btn.update(renderer, font_tiny, "AF SWEEP", {255, 255, 255, 255});
-            txt_af_btn.draw(renderer, 44, 98);
+            drawFillRoundedRect(renderer, 118, 50, 98, 32, 5, 0, 245, 255, 60);
+            drawRoundedRect(renderer, 118, 50, 98, 32, 5, 0, 245, 255, 255);
+            drawIconFocus(renderer, 130, 66, 12, 0, 245, 255, 255);
+            txt_focus_tab.update(renderer, font_tiny, "FOCUS", {0, 245, 255, 255});
+            txt_focus_tab.draw(renderer, 146, 59);
 
-            // Fine Nudge [-] and [+]
-            drawFillRoundedRect(renderer, 16, 400, 46, 30, 5, 20, 30, 48, 220);
-            drawRoundedRect(renderer, 16, 400, 46, 30, 5, 0, 245, 255, 120);
-            FastText txt_m, txt_p;
-            txt_m.update(renderer, font_medium, "-", {255, 255, 255, 255});
-            txt_m.drawCentered(renderer, 39, 415);
+            // Fine Nudge [-], AF, and [+]
+            drawFillRoundedRect(renderer, 16, 396, 60, 34, 5, 20, 30, 48, 220);
+            drawRoundedRect(renderer, 16, 396, 60, 34, 5, 0, 245, 255, 120);
+            txt_m.update(renderer, font_small, "- 0.1", {255, 255, 255, 255});
+            txt_m.drawCentered(renderer, 46, 413);
 
-            drawFillRoundedRect(renderer, 70, 400, 46, 30, 5, 20, 30, 48, 220);
-            drawRoundedRect(renderer, 70, 400, 46, 30, 5, 0, 245, 255, 120);
-            txt_p.update(renderer, font_medium, "+", {255, 255, 255, 255});
-            txt_p.drawCentered(renderer, 93, 415);
+            drawFillRoundedRect(renderer, 80, 396, 70, 34, 5, 16, 185, 129, auto_focus_active ? 220 : 120);
+            drawRoundedRect(renderer, 80, 396, 70, 34, 5, 16, 185, 129, 255);
+            txt_af_btn.update(renderer, font_small, "⚡ AF", {255, 255, 255, 255});
+            txt_af_btn.drawCentered(renderer, 115, 413);
+
+            drawFillRoundedRect(renderer, 154, 396, 60, 34, 5, 20, 30, 48, 220);
+            drawRoundedRect(renderer, 154, 396, 60, 34, 5, 0, 245, 255, 120);
+            txt_p.update(renderer, font_small, "+ 0.1", {255, 255, 255, 255});
+            txt_p.drawCentered(renderer, 184, 413);
         } else {
             // View Mode 2: Radial Curved Arc Carousel Navigation
             constexpr float ITEM_SPACING = 0.42f;
             const char* ITEM_NAMES[5] = { "FOCUS", "AF SWEEP", "MODE / FPS", "EXPOSURE", "WHITE BAL" };
 
             for (int i = 0; i < 5; ++i) {
-                float theta = carousel_angle + (i - current_carousel_idx) * ITEM_SPACING;
-                if (std::abs(theta) > 1.0f) continue;
+                float theta = carousel_angle + i * ITEM_SPACING;
+                if (std::abs(theta) > 1.05f) continue;
 
                 int ix = static_cast<int>(ARC_CENTER_X + ARC_RADIUS * std::cos(theta));
                 int iy = static_cast<int>(ARC_CENTER_Y + ARC_RADIUS * std::sin(theta));
 
                 bool is_sel = (std::abs(theta) < 0.20f);
-                int card_w = is_sel ? 120 : 100;
+                int card_w = is_sel ? 122 : 102;
                 int card_h = is_sel ? 36 : 30;
 
                 uint8_t bg_a = is_sel ? 230 : 150;
@@ -1030,12 +1112,18 @@ int main(int argc, char* argv[]) {
                 txt_carousel_items[i].draw(renderer, ix + 12, iy - txt_carousel_items[i].h / 2);
             }
 
-            // Quick back button to Focus Dial
-            drawFillRoundedRect(renderer, 16, 52, 100, 30, 6, 20, 30, 48, 220);
-            drawRoundedRect(renderer, 16, 52, 100, 30, 6, 0, 245, 255, 140);
-            drawIconFocus(renderer, 28, 67, 12, 0, 245, 255, 255);
-            txt_modes_btn.update(renderer, font_tiny, "FOCUS DIAL", {255, 255, 255, 255});
-            txt_modes_btn.draw(renderer, 42, 60);
+            // Segmented Mode Tabs: [MODES] and [FOCUS]
+            drawFillRoundedRect(renderer, 16, 50, 98, 32, 5, 0, 245, 255, 60);
+            drawRoundedRect(renderer, 16, 50, 98, 32, 5, 0, 245, 255, 255);
+            drawIconSliders(renderer, 28, 66, 12, 0, 245, 255, 255);
+            txt_modes_tab.update(renderer, font_tiny, "MODES", {0, 245, 255, 255});
+            txt_modes_tab.draw(renderer, 44, 59);
+
+            drawFillRoundedRect(renderer, 118, 50, 98, 32, 5, 20, 30, 48, 220);
+            drawRoundedRect(renderer, 118, 50, 98, 32, 5, 0, 245, 255, 100);
+            drawIconFocus(renderer, 130, 66, 12, 148, 163, 184, 255);
+            txt_focus_tab.update(renderer, font_tiny, "FOCUS", {148, 163, 184, 255});
+            txt_focus_tab.draw(renderer, 146, 59);
         }
 
         // 6. Right-Edge Ergonomic Action Pod
@@ -1057,7 +1145,6 @@ int main(int argc, char* argv[]) {
         drawFillCircleFast(renderer, 745, 340, 26, 12, 20, 32, 230);
         drawCircle(renderer, 745, 340, 26, 0, 245, 255, 180);
         drawIconSliders(renderer, 745, 337, 16, 0, 245, 255, 255);
-        FastText txt_set_btn_lbl;
         txt_set_btn_lbl.update(renderer, font_tiny, "SET", {0, 245, 255, 255});
         txt_set_btn_lbl.drawCentered(renderer, 745, 354);
 
@@ -1139,7 +1226,6 @@ int main(int argc, char* argv[]) {
             drawFillCircleFast(renderer, gain_knob_x + 5, 239, 8, 16, 185, 129, 255);
 
             // White Balance Presets
-            FastText txt_awb_title;
             txt_awb_title.update(renderer, font_tiny, "WHITE BALANCE PRESETS", {148, 163, 184, 255});
             txt_awb_title.draw(renderer, 465, 275);
 
@@ -1209,6 +1295,12 @@ int main(int argc, char* argv[]) {
     txt_exp_label.destroy();
     txt_gain_label.destroy();
     for (int b = 0; b < 4; ++b) txt_awb_btn[b].destroy();
+    txt_awb_title.destroy();
+    txt_m.destroy();
+    txt_p.destroy();
+    txt_set_btn_lbl.destroy();
+    txt_modes_tab.destroy();
+    txt_focus_tab.destroy();
 
     if (video_texture) SDL_DestroyTexture(video_texture);
     if (font_tiny) TTF_CloseFont(font_tiny);
